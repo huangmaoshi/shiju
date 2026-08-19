@@ -921,23 +921,24 @@ export const statsOverview = catchAsync(async (_req, res) => {
   const now = new Date();
   const sevenDaysAgo = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000);
 
-  const dailyUsers = await prisma.$queryRaw<Array<{ date: string; count: number }>>`
-    SELECT DATE(createdAt) as date, COUNT(*) as count
-    FROM User
-    WHERE createdAt >= ${sevenDaysAgo}
-    GROUP BY DATE(createdAt)
-    ORDER BY date ASC
-  `;
+  // 跨数据库兼容：用 findMany + JS 分组（避免 $queryRaw 的 SQL 方言问题）
+  const [users, quotes] = await Promise.all([
+    prisma.user.findMany({ where: { createdAt: { gte: sevenDaysAgo } }, select: { createdAt: true } }),
+    prisma.quote.findMany({ where: { createdAt: { gte: sevenDaysAgo } }, select: { createdAt: true } }),
+  ]);
 
-  const dailyQuotes = await prisma.$queryRaw<Array<{ date: string; count: number }>>`
-    SELECT DATE(createdAt) as date, COUNT(*) as count
-    FROM Quote
-    WHERE createdAt >= ${sevenDaysAgo}
-    GROUP BY DATE(createdAt)
-    ORDER BY date ASC
-  `;
+  const groupByDate = (rows: { createdAt: Date }[]) => {
+    const map = new Map<string, number>();
+    for (const r of rows) {
+      const d = r.createdAt.toISOString().slice(0, 10); // YYYY-MM-DD
+      map.set(d, (map.get(d) ?? 0) + 1);
+    }
+    return Array.from(map.entries())
+      .map(([date, count]) => ({ date, count }))
+      .sort((a, b) => a.date.localeCompare(b.date));
+  };
 
-  ok(res, { dailyUsers, dailyQuotes });
+  ok(res, { dailyUsers: groupByDate(users), dailyQuotes: groupByDate(quotes) });
 });
 // ======== 批量导入公版数据接口 ========
 export const crawlImport = catchAsync(async (req, res) => {
