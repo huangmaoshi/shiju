@@ -50,9 +50,13 @@ ENV DATABASE_URL="file:./dev.db"
 ENV JWT_SECRET="change_in_production"
 ENV JWT_EXPIRES_IN=2h
 ENV ADMIN_KEY="shiju_admin_key"
+# Prisma schema 文件路径（切换 PostgreSQL 时设为 prisma/schema.postgres.prisma）
+ENV PRISMA_SCHEMA="prisma/schema.prisma"
 
 EXPOSE 3000
 
-# 入口：先推送 schema 到数据库（创建表），再启动
+# 入口：根据 PRISMA_SCHEMA 生成对应数据库的 Prisma Client + 推送建表，再启动
+# - 默认 SQLite：PRISMA_SCHEMA=prisma/schema.prisma
+# - PostgreSQL：PRISMA_SCHEMA=prisma/schema.postgres.prisma + DATABASE_URL=postgresql://...
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "npx prisma db push --skip-generate && node dist/server.js"]
+CMD ["sh", "-c", "npx prisma generate --schema=$PRISMA_SCHEMA && npx prisma db push --skip-generate --schema=$PRISMA_SCHEMA && node dist/server.js"]
