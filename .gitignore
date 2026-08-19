@@ -1,0 +1,51 @@
+# ====== 临时脚本 ======
+_check*.js
+_cleanup*.js
+_debug*.js
+_check*.ts
+_tmp_*
+
+# ====== 通用 ======
+node_modules/
+dist/
+*.log
+*.log.*
+.env
+.env.*
+!.env.example
+.DS_Store
+Thumbs.db
+
+# ====== 后端 server/ ======
+server/dev.db
+server/dev.db-journal
+server/data/
+server/src/public/uploads/
+
+# ====== 前端 web/ ======
+web/dist/
+
+# ====== Flutter app/ ======
+app/.dart_tool/
+app/.flutter-plugins
+app/.flutter-plugins-dependencies
+app/build/
+app/ios/Pods/
+app/android/.gradle/
+app/android/build/
+app/ios/Flutter/Flutter.framework
+app/ios/Flutter/Flutter.podspec
+
+# ====== crawler/ ======
+crawler/node_modules/
+crawler/data/
+
+# ====== IDE ======
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# ====== Docker 持久化数据 ======
+server/data/

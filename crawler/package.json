@@ -1,0 +1,32 @@
+{
+  "name": "shi-ju-crawler",
+  "version": "1.0.0",
+  "description": "拾句 - 金句/作文素材采集爬虫",
+  "main": "dist/index.js",
+  "scripts": {
+    "dev": "ts-node src/index.ts",
+    "build": "tsc",
+    "start": "node dist/index.js",
+    "prisma:generate": "prisma generate",
+    "crawl:run": "ts-node src/index.ts --run",
+    "crawl:list": "ts-node src/index.ts --list"
+  },
+  "prisma": {
+    "schema": "../server/prisma/schema.prisma"
+  },
+  "dependencies": {
+    "@prisma/client": "^5.19.0",
+    "cheerio": "^1.0.0",
+    "dotenv": "^16.4.5",
+    "got": "^14.4.2",
+    "node-cron": "^3.0.3"
+  },
+  "devDependencies": {
+    "@types/node": "^22.7.4",
+    "@types/node-cron": "^3.0.11",
+    "prisma": "^5.19.0",
+    "ts-node": "^10.9.2",
+    "tsconfig-paths": "^4.2.0",
+    "typescript": "^5.6.2"
+  }
+}

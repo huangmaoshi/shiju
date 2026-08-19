@@ -1,0 +1,72 @@
+# ====== 拾句 · Docker Compose 一键部署 ======
+# 使用方式：
+#   1. 复制 .env.example 为 .env 并修改配置
+#   2. docker compose up -d --build
+#   3. 访问 http://localhost:8080/admin/login
+
+services:
+  # ---- 后端 API 服务 ----
+  shiju-server:
+    build:
+      context: ./server
+      dockerfile: Dockerfile
+    container_name: shiju-server
+    restart: unless-stopped
+    ports:
+      - "3000:3000"
+    environment:
+      NODE_ENV: production
+      PORT: 3000
+      # SQLite 模式（默认，数据持久化到 ./data 目录）
+      DATABASE_URL: "file:./data/dev.db"
+      JWT_SECRET: ${JWT_SECRET:-change_in_production}
+      JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
+      ADMIN_KEY: ${ADMIN_KEY:-shiju_admin_key}
+    volumes:
+      # SQLite 数据文件持久化
+      - ./server/data:/app/data
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s
+
+  # ---- 管理后台（Nginx + React 静态） ----
+  shiju-web:
+    build:
+      context: ./web
+      dockerfile: Dockerfile
+    container_name: shiju-web
+    restart: unless-stopped
+    ports:
+      - "8080:80"
+    depends_on:
+      shiju-server:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+
+# ---- 可选：MySQL 生产数据库 ----
+# 如果使用 MySQL，取消注释以下配置，并修改后端 DATABASE_URL
+#
+#  mysql:
+#    image: mysql:8.0
+#    container_name: shiju-mysql
+#    restart: unless-stopped
+#    environment:
+#      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-shiju_root_2024}
+#      MYSQL_DATABASE: shiju
+#      MYSQL_USER: shiju
+#      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-shiju_pass_2024}
+#    ports:
+#      - "3306:3306"
+#    volumes:
+#      - mysql_data:/var/lib/mysql
+#    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+#
+# volumes:
+#   mysql_data:
