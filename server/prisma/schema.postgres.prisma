@@ -1,0 +1,557 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              Int      @id @default(autoincrement())
+  openId          String   @unique
+  username        String?  @unique
+  passwordHash    String?
+  nickname        String?
+  avatar          String?
+  gender          Int      @default(0)
+  userType        String   @default("wechat")   // wechat / account
+  memberLevel     Int      @default(0)           // 0=非会员 1=普通会员 2=高级会员
+  memberExpireAt  DateTime?
+  trialExpireAt   DateTime?                      // 试用到期时间
+  status          Int      @default(1)
+  lastLoginAt     DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @updatedAt
+
+  collections  Collection[]
+  customQuotes CustomQuote[]
+  recitePlans  RecitePlan[]
+  reciteLogs   ReciteLog[]
+  member       Member?
+  orders       Order[]
+  syncRecords  SyncRecord[]
+}
+
+model Member {
+  id           Int      @id @default(autoincrement())
+  userId       Int      @unique
+  planType     String   @default("monthly")
+  startDate    DateTime @default(now())
+  expireDate   DateTime
+  status       Int      @default(1)
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+  
+  user         User     @relation(fields: [userId], references: [id])
+}
+
+model Order {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  orderNo     String   @unique
+  planType    String
+  amount      Float    @default(0)
+  payChannel  String   @default("wechat")
+  payStatus   Int      @default(0)
+  payTime     DateTime?
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+}
+
+model Category {
+  id          Int      @id @default(autoincrement())
+  name        String
+  type        String
+  parentId    Int?
+  sort        Int      @default(0)
+  status      Int      @default(1)
+  createdAt   DateTime @default(now())
+
+  parent      Category? @relation("CategoryParent", fields: [parentId], references: [id])
+  children    Category[] @relation("CategoryParent")
+
+  quoteCategories       QuoteCategory[]
+  originalTextCategories OriginalTextCategory[]
+
+  @@index([type])
+}
+
+model QuoteCategory {
+  quoteId     Int
+  categoryId  Int
+
+  quote       Quote    @relation(fields: [quoteId], references: [id])
+  category    Category @relation(fields: [categoryId], references: [id])
+
+  @@id([quoteId, categoryId])
+  @@index([categoryId])
+}
+
+model OriginalTextCategory {
+  originalTextId  Int
+  categoryId      Int
+
+  originalText  OriginalText @relation(fields: [originalTextId], references: [id])
+  category      Category      @relation(fields: [categoryId], references: [id])
+
+  @@id([originalTextId, categoryId])
+  @@index([categoryId])
+}
+
+model Quote {
+  id             Int          @id @default(autoincrement())
+  content        String
+  contentMd5     String?
+  simHash        String?      
+  author         String?
+  source         String?
+  sourceUrl      String?
+  provider       String?
+  summary        String?
+  pinyinData     String?
+  simplifiedContent String?  // 繁转简后的简体内容
+  tags           String?
+  wordCount      Int          @default(0)
+  isFree         Boolean      @default(true)
+  isActive       Boolean      @default(true)
+  auditStatus    Int          @default(1)   // 0=待审 1=通过 2=拒绝
+  auditReason    String?
+  viewCount      Int          @default(0)
+  favCount       Int          @default(0)
+  originalTextId Int?
+  quoteType      String       @default("admin")   // admin / crawl / ai / user
+  aiExtracted    Boolean      @default(false)
+  createdAt      DateTime     @default(now())
+  updatedAt      DateTime     @updatedAt
+
+  quoteCategories       QuoteCategory[]
+  collectionQuotes      CollectionQuote[]
+  dailyRecommendQuotes  DailyRecommendQuote[]
+  originalText          OriginalText? @relation(fields: [originalTextId], references: [id])
+
+  @@index([originalTextId])
+  @@index([contentMd5])
+  @@index([quoteType])
+  @@index([auditStatus])
+}
+
+model CustomQuote {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  content     String
+  author      String?
+  source      String?
+  note        String?
+  tags        String?
+  categoryIds String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id])
+  collectionQuotes CollectionQuote[]
+  
+  @@index([userId])
+}
+
+model Collection {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  name        String
+  description String?
+  isDefault   Int      @default(0)
+  quoteCount  Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  
+  user        User     @relation(fields: [userId], references: [id])
+  collectionQuotes CollectionQuote[]
+  
+  @@index([userId])
+}
+
+model CollectionQuote {
+  id              Int      @id @default(autoincrement())
+  collectionId    Int
+  quoteId         Int?
+  customQuoteId   Int?
+  addedAt         DateTime @default(now())
+  
+  collection      Collection @relation(fields: [collectionId], references: [id], onDelete: Cascade)
+  quote           Quote?    @relation(fields: [quoteId], references: [id])
+  customQuote     CustomQuote? @relation(fields: [customQuoteId], references: [id])
+  
+  @@index([collectionId])
+  @@index([quoteId])
+}
+
+model RecitePlan {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  quoteId     Int?
+  customQuoteId Int?
+  currentStage Int      @default(0)
+  nextReviewAt DateTime
+  lastReviewAt DateTime?
+  masterLevel Int      @default(0)
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+}
+
+model ReciteLog {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  planId      Int
+  action      String
+  reviewDate  DateTime
+  createdAt   DateTime @default(now())
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId])
+}
+
+model DailyRecommend {
+  id          Int      @id @default(autoincrement())
+  recommendDate DateTime @unique
+  theme       String?
+  status      Int      @default(1)
+  createdAt   DateTime @default(now())
+  
+  dailyRecommendQuotes DailyRecommendQuote[]
+}
+
+model DailyRecommendQuote {
+  id          Int      @id @default(autoincrement())
+  recommendId Int
+  quoteId     Int
+  sort        Int      @default(0)
+  
+  recommend   DailyRecommend @relation(fields: [recommendId], references: [id])
+  quote       Quote    @relation(fields: [quoteId], references: [id])
+}
+
+model CardTemplate {
+  id            Int      @id @default(autoincrement())
+  name          String
+  style         String
+  bgType        String
+  bgValue       String
+  fontFamily    String
+  fontSize      Int      @default(18)
+  fontColor     String
+  lineHeight    Float    @default(1.8)
+  textAlign     String   @default("center")
+  showAuthor    Int      @default(1)
+  showWatermark Int      @default(1)
+  isMember      Int      @default(0)
+  status        Int      @default(1)
+  previewUrl    String?
+  createdAt     DateTime @default(now())
+  
+  @@index([isMember, status])
+}
+
+model CompositionTemplate {
+  id          Int      @id @default(autoincrement())
+  title       String
+  type        String
+  content     String
+  examples    String?
+  theme       String?
+  isFree      Int      @default(1)
+  status      Int      @default(1)
+  createdAt   DateTime @default(now())
+  
+  @@index([type, status])
+}
+
+model ThemePackage {
+  id           Int      @id @default(autoincrement())
+  name         String
+  description  String?
+  coverUrl     String?
+  quoteIds     String
+  isMember     Int      @default(0)
+  adUnlockDays Int      @default(7)
+  expireDate   DateTime?
+  status       Int      @default(1)
+  createdAt    DateTime @default(now())
+}
+
+model AdConfig {
+  id          Int      @id @default(autoincrement())
+  position    String
+  title       String?
+  imageUrl    String?
+  targetUrl   String?
+  adType      String?
+  adUnitId    String?
+  platform    String?
+  frequency   Int      @default(3)
+  priority    Int      @default(0)
+  isActive    Boolean  @default(true)
+  status      Int      @default(1)
+  startAt     DateTime?
+  endAt       DateTime?
+  updatedAt   DateTime @updatedAt
+
+  @@index([position, status])
+}
+
+model SyncRecord {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  tableName   String
+  recordId    Int
+  action      String
+  syncAt      DateTime @default(now())
+  deviceId    String?
+  
+  user        User     @relation(fields: [userId], references: [id])
+  
+  @@index([userId, syncAt])
+}
+
+model SearchHistory {
+  id          Int      @id @default(autoincrement())
+  userId      Int
+  keyword     String
+  createdAt   DateTime @default(now())
+  
+  @@index([userId, createdAt])
+}
+
+model CrawlSource {
+  id            Int      @id @default(autoincrement())
+  name          String
+  code          String   @unique
+  baseUrl       String
+  type          String   // static / dynamic / github / api / file
+  datasetType   String?  // poetry / prose / quote / lyric / script
+  complianceTag String?  // public_domain / mit / apache / cc0 / translated
+  protocol      String?  // MIT / Apache-2.0 / PD / CC0 / CC-BY
+  datasetSize   Int?     // 预估数据量（条）
+  needTranslate Boolean  @default(false)
+  categoryType  String?
+  categoryId    Int?
+  charset       String   @default("utf-8")
+  userAgent     String?
+  qpsLimit      Int      @default(5)
+  maxDepth      Int      @default(3)
+  status        Int      @default(1)
+  priority      Int      @default(0)
+  remark        String?
+  lastRunAt     DateTime?
+  lastCrawlAt   DateTime?
+  totalCrawled  Int      @default(0)
+  successRate   Float    @default(0)
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+  
+  crawlTasks    CrawlTask[]
+  crawlRecords  CrawlRecord[]
+  schedules     CrawlSchedule[]
+  
+  @@index([status])
+  @@index([complianceTag])
+  @@index([type])
+}
+
+model CrawlTask {
+  id          Int      @id @default(autoincrement())
+  sourceId    Int?
+  url         String?
+  provider    String?
+  depth       Int      @default(1)
+  method      String   @default("GET")
+  selector    String?
+  interval    Int      @default(0)
+  status      String   @default("pending")
+  priority    Int      @default(0)
+  retryCount  Int      @default(0)
+  maxRetry    Int      @default(3)
+  nextRunAt   DateTime?
+  startAt     DateTime?
+  endAt       DateTime?
+  lastRunAt   DateTime?
+  lastError   String?
+  errorMessage String?
+  duration    Int?
+  totalCount  Int      @default(0)
+  newCount    Int      @default(0)
+  recordCount Int      @default(0)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  source      CrawlSource? @relation(fields: [sourceId], references: [id])
+  crawlRecords CrawlRecord[]
+
+  @@index([sourceId, status])
+  @@index([status])
+}
+
+model CrawlRecord {
+  id              Int      @id @default(autoincrement())
+  taskId          Int
+  sourceId        Int
+  originalUrl     String
+  content         String
+  author          String?
+  sourceName      String?
+  rawHtml         String?
+  extractMethod   String?
+  simHash         String?
+  fingerprint     String?
+  categoryType    String?
+  categoryIds     String?
+  auditStatus     Int      @default(0)
+  auditReason     String?
+  auditBy         String?
+  auditAt         DateTime?
+  finalQuoteId    Int?
+  createdAt       DateTime @default(now())
+  
+  task            CrawlTask @relation(fields: [taskId], references: [id])
+  source          CrawlSource @relation(fields: [sourceId], references: [id])
+  
+  @@index([taskId])
+  @@index([fingerprint])
+  @@index([auditStatus])
+}
+
+model CrawlSchedule {
+  id             Int       @id @default(autoincrement())
+  sourceId       Int       @unique
+  cronExpr       String              // 5 段标准 cron 表达式：分 时 日 月 周
+  enabled        Int       @default(1)
+  concurrency    Int       @default(2)
+  pagesPerRun    Int       @default(20)
+  nextRunAt      DateTime?           // 下次执行时间（由调度器计算）
+  lastRunAt      DateTime?           // 上次实际执行时间
+  lastRunStatus  String?              // success / failed / running
+  lastRunCount   Int       @default(0)
+  lastError      String?
+  createdAt      DateTime  @default(now())
+  updatedAt      DateTime  @updatedAt
+
+  source         CrawlSource @relation(fields: [sourceId], references: [id])
+}
+
+// ===== 原文管理 =====
+model OriginalText {
+  id             Int      @id @default(autoincrement())
+  title          String
+  contentMd5     String?
+  simHash        String?  
+  author         String?
+  source         String?
+  sourceUrl      String?
+  categoryType   String?
+  content        String
+  pinyinData     String?  // 拼音数据 JSON，格式 [{"c":"字","p":"pīn"}]
+  simplifiedContent String?  // 繁转简后的简体内容
+  summary        String?
+  tags           String?
+  wordCount      Int      @default(0)
+  provider       String?
+  complianceTag  String?
+  protocol       String?
+  status         Int      @default(1)
+  auditStatus    Int      @default(1)   // 0=待审 1=通过 2=拒绝
+  auditReason    String?
+  quoteCount     Int      @default(0)
+  createdAt      DateTime @default(now())
+  updatedAt      DateTime @updatedAt
+
+  quotes Quote[]
+
+  originalTextCategories OriginalTextCategory[]
+
+  @@index([categoryType])
+  @@index([status])
+  @@index([author])
+  @@index([contentMd5])
+  @@index([auditStatus])
+}
+
+// ===== AI 大模型配置 =====
+model AiConfig {
+  id            Int      @id @default(autoincrement())
+  name          String
+  provider      String
+  apiKey        String
+  baseUrl       String
+  model         String
+  temperature   Float    @default(0.7)
+  maxTokens     Int      @default(2048)
+  promptTemplate String?  // 金句提取提示词模板（兼容旧字段）
+  pinyinPromptTemplate String?  // 拼音生成提示词模板
+  simplifyPromptTemplate String?  // 繁转简提示词模板
+  classifyPromptTemplate String?  // AI 自动分类提示词模板
+  timeoutMs     Int      @default(60000)  // 请求超时（毫秒）
+  retryCount    Int      @default(2)  // 失败重试次数
+  batchConcurrency Int   @default(3)  // 批量处理并发数
+  isDefault     Boolean  @default(false)
+  isActive      Boolean  @default(true)
+  remark        String?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  aiExtractTasks AiExtractTask[]
+
+  @@index([isActive, isDefault])
+}
+
+// ===== AI 金句提取任务 =====
+model AiExtractTask {
+  id            Int      @id @default(autoincrement())
+  configId      Int
+  originalTextId Int?
+  batchSource   String?   // 批量来源类型：original_text / crawl_record
+  batchIds      String?   // 批量处理的 ID 列表 JSON
+  status        String   @default("pending") // pending / running / success / failed
+  totalCount    Int      @default(0)
+  successCount  Int      @default(0)
+  failCount     Int      @default(0)
+  extractedQuotes String?  // 提取到的金句列表 JSON
+  errorMessage  String?
+  startAt       DateTime?
+  endAt         DateTime?
+  duration      Int?
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
+
+  config AiConfig @relation(fields: [configId], references: [id])
+
+  @@index([configId])
+  @@index([status])
+}
+
+// ===== 系统配置 =====
+model SystemConfig {
+  id          Int      @id @default(autoincrement())
+  key         String   @unique
+  value       String
+  remark      String?
+  updatedAt   DateTime @updatedAt
+}
+
+// ===== 支付配置 =====
+model PaymentConfig {
+  id          Int      @id @default(autoincrement())
+  payChannel  String   @unique               // wechat / alipay
+  appId       String?
+  mchId       String?
+  apiKey      String?
+  notifyUrl   String?
+  isActive    Boolean  @default(true)
+  remark      String?
+  updatedAt   DateTime @updatedAt
+}
