@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { BusinessError } from '@/middlewares/error_middleware';
 import { PageResult, QuoteSummary, CategorySimple } from '@/types';
 
@@ -99,13 +99,13 @@ async function getHotKeywords(): Promise<string[]> {
         return cached.data;
     }
 
-    const results = await prisma.$queryRaw<Array<{ keyword: string; count: number }>>`
-        SELECT keyword, COUNT(*) as count
-        FROM SearchHistory
-        GROUP BY keyword
-        ORDER BY count DESC
-        LIMIT 10
-    `;
+    // 跨数据库兼容：用 groupBy 替代 $queryRaw（避免 SQL 方言问题）
+    const results = await prisma.searchHistory.groupBy({
+        by: ['keyword'],
+        _count: { keyword: true },
+        orderBy: { _count: { keyword: 'desc' } },
+        take: 10,
+    });
 
     const keywords = results.map((r) => r.keyword);
     hotKeywordCache.set('hot', { data: keywords, expireAt: Date.now() + CACHE_TTL_MS });

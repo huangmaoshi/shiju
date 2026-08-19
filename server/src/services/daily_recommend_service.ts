@@ -1,4 +1,4 @@
-﻿import { PrismaClient } from '@prisma/client';
+import { PrismaClient } from '@prisma/client';
 import { BusinessError } from '@/middlewares/error_middleware';
 import { QuoteDetail, CategorySimple } from '@/types';
 
@@ -54,23 +54,22 @@ async function getByDate(date: string): Promise<DailyRecommendItem | null> {
 }
 
 async function generateTodayRecommend() {
-    const total = await prisma.quote.count({ where: { isActive: true, auditStatus: 1 } });
-    if (total === 0) {
+    // 跨数据库兼容：用 findMany 获取全部 id，JS 随机抽取（避免 RANDOM() 方言差异）
+    const allQuotes = await prisma.quote.findMany({
+        where: { isActive: true, auditStatus: 1 },
+        select: { id: true },
+    });
+    if (allQuotes.length === 0) {
         throw new BusinessError(500, '暂无可推荐的名句');
     }
 
-    const randomQuoteIds = await prisma.$queryRaw<Array<{ id: number }>>`
-        SELECT id FROM Quote WHERE isActive = 1 AND auditStatus = 1 ORDER BY RANDOM() LIMIT 10
-    `;
-
-    const quoteIds = randomQuoteIds.map((r) => r.id);
-    if (quoteIds.length === 0) {
-        const quotes = await prisma.quote.findMany({
-            where: { isActive: true, auditStatus: 1 },
-            take: 10,
-            select: { id: true },
-        });
-        quoteIds.push(...quotes.map((q) => q.id));
+    // Fisher-Yates 随机抽取 10 个
+    const pool = allQuotes.map((q) => q.id);
+    const takeCount = Math.min(10, pool.length);
+    const quoteIds: number[] = [];
+    for (let i = 0; i < takeCount; i++) {
+        const idx = Math.floor(Math.random() * pool.length);
+        quoteIds.push(pool.splice(idx, 1)[0]);
     }
 
     const today = startOfDay(new Date());
