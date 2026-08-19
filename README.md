@@ -22,7 +22,7 @@
 ┌─────────────────────────────────────────────────────────────────────────────┐
 │              后端 API 层   Node.js + Express 4 + TypeScript                 │
 │                                                                             │
-│  Controller → Service → Prisma → SQLite / MySQL                             │
+│  Controller → Service → Prisma → SQLite / PostgreSQL / MySQL               │
 │  中间件：JWT 鉴权 / Admin Key / 会员拦截 / 限流 / 错误处理 / CORS / Helmet    │
 │                                                                             │
 │  内置能力：                                                                   │
@@ -39,15 +39,15 @@
 │  └──────────────────┘  └───────────────────┘  └──────────────────────────┘  │
 │                                                                             │
 │  ┌──────────────────┐  ┌───────────────────┐  ┌──────────────────────────┐  │
-│  │  一键批量处理       │  │  原文审核流程        │  │  Prisma ORM + SQLite      │  │
-│  │  拼音/提取/繁转简   │  │  批量审核接口        │  │  开发轻量 / 生产 MySQL     │  │
+│  │  一键批量处理       │  │  原文审核流程        │  │  Prisma ORM + SQLite       │  │
+│  │  拼音/提取/繁转简   │  │  批量审核接口        │  │  开发轻量 / 生产 PG/MySQL   │  │
 │  │  分类 一键搞定      │  │  待审原文不对用户展示│  │  schema 已含全部采集字段    │  │
 │  └──────────────────┘  └───────────────────┘  └──────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
           │                              │
           ▼                              ▼
 ┌───────────────────────┐  ┌───────────────────────────────────────────────┐
-│  数据库 (SQLite/MySQL) │  │  GitHub Raw / 公网 JSON 数据源                │
+│  数据库 (SQLite/PG/MySQL) │  │  GitHub Raw / 公网 JSON 数据源                │
 │  原文 / 金句 / 采集 / AI │  │  chinese-poetry / poetry-dataset / quotes ... │
 │  配置 / 会员 / 订单      │  │  （后端内置 HTTP fetch + 30s 超时 + 3 次重试）  │
 └───────────────────────┘  └───────────────────────────────────────────────┘
@@ -66,7 +66,8 @@
 拾句/
 ├── server/                     # 后端 API 服务（Node.js + Express + Prisma）
 │   ├── prisma/                 #   数据库模型 + 种子数据 + SQLite 文件
-│   │   ├── schema.prisma       #     全部数据模型（含采集/AI/审核字段）
+│   │   ├── schema.prisma       #     全部数据模型（SQLite 版，默认）
+│   │   ├── schema.postgres.prisma #   PostgreSQL 版 schema（provider=postgresql）
 │   │   └── seed.ts             #     初始化采集源、分类、系统配置
 │   ├── src/
 │   │   ├── config/             #   配置加载
@@ -128,7 +129,7 @@
 |---|---|---|
 | 后端运行时 | Node.js ≥ 18（推荐 20 LTS） | Express 4.x |
 | 后端语言 | TypeScript 5 | 路径别名 `@/` 指向 `src/` |
-| ORM | Prisma 5 | SQLite（开发）/ MySQL（生产） |
+| ORM | Prisma 5 | SQLite（开发）/ PostgreSQL（生产推荐）/ MySQL |
 | 鉴权 | JWT (jsonwebtoken) + Admin Key | 双鉴权：用户端 Bearer Token / 管理后台 x-admin-key |
 | 密码存储 | PBKDF2-SHA512 | 零依赖 Node 内置 crypto |
 | 日志 | Winston + Morgan | 文件 + 控制台 |
@@ -397,7 +398,7 @@ npm run dev                 # → http://localhost:3000
 ```env
 PORT=3000
 NODE_ENV=development
-DATABASE_URL="file:./dev.db"            # 开发 SQLite；生产换 MySQL
+DATABASE_URL="file:./dev.db"            # 开发 SQLite；生产换 PostgreSQL（推荐）/ MySQL
 JWT_SECRET="change_in_production"
 JWT_EXPIRES_IN=2h
 ADMIN_KEY="shiju_admin_key"              # 管理后台鉴权头：x-admin-key
@@ -502,6 +503,7 @@ docker compose down
 #### 数据持久化
 
 - SQLite 模式（默认）：数据库文件挂载到 `./server/data/` 目录，容器重建后数据不丢
+- PostgreSQL 模式（生产推荐）：在 `.env` 设置 `DATABASE_URL` + `PRISMA_SCHEMA=prisma/schema.postgres.prisma`，取消注释 `docker-compose.yml` 中 postgres 服务块
 - MySQL 模式：取消注释 `docker-compose.yml` 中的 MySQL 配置，修改 `DATABASE_URL` 为 `mysql://...`
 
 #### Docker 架构图
@@ -536,6 +538,35 @@ docker compose down
 docker compose up -d --build
 ```
 
+#### 使用 PostgreSQL（生产推荐）
+
+项目内置 PostgreSQL 版本的 Prisma schema（`server/prisma/schema.postgres.prisma`），通过环境变量一键切换，无需手动改 schema 文件。
+
+```yaml
+# 1. 在 .env 设置：
+#    DATABASE_URL="postgresql://shiju:shiju_pass_2024@postgres:5432/shiju?schema=public"
+#    PRISMA_SCHEMA="prisma/schema.postgres.prisma"
+#    POSTGRES_USER=shiju
+#    POSTGRES_PASSWORD=shiju_pass_2024
+#    POSTGRES_DB=shiju
+# 2. 取消 docker-compose.yml 中 postgres 服务块注释
+# 3. 在 shiju-server 取消 depends_on: postgres 注释
+# 4. 启动（首次自动 prisma db push 建表）：
+docker compose up -d --build
+```
+
+本地开发切换到 PostgreSQL：
+
+```bash
+cd server
+# .env 的 DATABASE_URL 改为 postgresql://...
+npm run prisma:generate:pg   # 用 PG 版 schema 生成 Prisma Client
+npm run prisma:push:pg      # 推送 schema 到 PG 建表
+npm run prisma:seed:pg      # 灌入种子数据
+npm run dev
+# 切回 SQLite：npm run prisma:generate && npm run prisma:push
+```
+
 ---
 
 ## 附：端口与健康检查
@@ -545,14 +576,38 @@ docker compose up -d --build
 | 3000 | 后端 API（Express）|
 | 5173 | 管理后台开发服务器（Vite dev）|
 | 8080 | 管理后台生产容器内端口（Nginx）|
-| 3306 | MySQL（docker-compose 内部）|
+| 3306 | MySQL（docker-compose 内部，可选）|
+| 5432 | PostgreSQL（docker-compose 内部，可选）|
 
 ```bash
 curl http://localhost:3000/api/health
 # {"code":0,"data":{"status":"ok","uptime":1234,"version":"1.0.0"}}
 ```
 
-## 附：数据库切换（SQLite → MySQL）
+## 附：数据库切换（SQLite / PostgreSQL / MySQL）
+
+项目通过「双 schema 文件 + 环境变量」支持三种数据库，无需手动改 schema：
+
+| 数据库 | schema 文件 | provider | 适用场景 |
+|---|---|---|---|
+| SQLite（默认） | `prisma/schema.prisma` | `sqlite` | 开发轻量、单机部署 |
+| PostgreSQL（推荐） | `prisma/schema.postgres.prisma` | `postgresql` | 生产、高并发、事务强 |
+| MySQL | 需手动改 provider | `mysql` | 生产、已有 MySQL 环境 |
+
+> 说明：Prisma 的 `datasource.provider` 不支持环境变量动态切换，因此采用两份 schema 文件，通过 `PRISMA_SCHEMA` 环境变量或 `--schema` 参数选择。代码层已移除全部 `$queryRaw`（改用 Prisma 标准查询），保证三种数据库下行为一致。
+
+**SQLite → PostgreSQL**：
+
+```bash
+cd server
+# .env 的 DATABASE_URL 改为 postgresql://...
+npm run prisma:generate:pg   # 生成 PG 版 Prisma Client
+npm run prisma:push:pg       # 建表
+npm run prisma:seed:pg       # 种子数据
+npm run dev
+```
+
+**SQLite → MySQL**：
 
 修改 `server/prisma/schema.prisma`：
 ```prisma
