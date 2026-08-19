@@ -10,7 +10,11 @@
     "prisma:generate": "prisma generate",
     "prisma:push": "prisma db push",
     "prisma:seed": "ts-node prisma/seed.ts",
-    "prisma:studio": "prisma studio"
+    "prisma:studio": "prisma studio",
+    "prisma:generate:pg": "prisma generate --schema=prisma/schema.postgres.prisma",
+    "prisma:push:pg": "prisma db push --schema=prisma/schema.postgres.prisma",
+    "prisma:studio:pg": "prisma studio --schema=prisma/schema.postgres.prisma",
+    "prisma:seed:pg": "ts-node prisma/seed.ts"
   },
   "prisma": {
     "seed": "ts-node prisma/seed.ts"
@@ -26,6 +30,7 @@
     "morgan": "^1.10.0",
     "node-cron": "^4.6.0",
     "pdfkit": "^0.15.0",
+    "prisma": "^5.19.0",
     "winston": "^3.15.0",
     "zod": "^3.23.8"
   },
@@ -37,7 +42,6 @@
     "@types/node": "^22.7.4",
     "@types/node-cron": "^3.0.11",
     "nodemon": "^3.1.7",
-    "prisma": "^5.19.0",
     "ts-node": "^10.9.2",
     "tsconfig-paths": "^4.2.0",
     "typescript": "^5.6.2"
