@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { Row, Col, Card, Button, Input, Tag, Statistic } from "antd";
 import { SearchOutlined, ThunderboltOutlined, FireOutlined, StarOutlined } from "@ant-design/icons";
 import { quoteApi } from "@/api/quote";
-import { dailyApi } from "@/api";
+import { dailyApi, statsApi } from "@/api";
 import { categoryApi } from "@/api/category";
 import type { Quote, Category, DailyRecommend } from "@/types";
 
@@ -12,11 +12,13 @@ export default function Home() {
   const [daily, setDaily] = useState<Quote[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [keyword, setKeyword] = useState("");
+  const [stats, setStats] = useState({ quoteTotal: 0, categoryTotal: 0, templateTotal: 0, dailyRecommendCount: 0 });
 
   useEffect(() => {
     quoteApi.random(5).then(setRandom).catch(() => {});
     dailyApi.today().then((d: DailyRecommend) => setDaily(d.quotes || [])).catch(() => {});
     categoryApi.list().then(setCategories).catch(() => {});
+    statsApi.home().then(setStats).catch(() => {});
   }, []);
 
   const groups: Record<string, Category[]> = {};
@@ -54,22 +56,22 @@ export default function Home() {
       <Row gutter={[16, 16]} style={{ marginBottom: 32 }}>
         <Col xs={12} sm={6}>
           <Card>
-            <Statistic title="金句总量" value={8000} suffix="+" />
+            <Statistic title="金句总量" value={stats.quoteTotal} suffix={stats.quoteTotal >= 10000 ? "+" : ""} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card>
-            <Statistic title="分类" value={20} />
+            <Statistic title="分类" value={stats.categoryTotal} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card>
-            <Statistic title="作文模板" value={50} />
+            <Statistic title="作文模板" value={stats.templateTotal} />
           </Card>
         </Col>
         <Col xs={12} sm={6}>
           <Card>
-            <Statistic title="每日精选" value={10} suffix="条/天" />
+            <Statistic title="每日精选" value={stats.dailyRecommendCount} suffix="条/天" />
           </Card>
         </Col>
       </Row>

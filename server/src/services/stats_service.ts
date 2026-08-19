@@ -62,11 +62,41 @@ async function dashboard(): Promise<{
     };
 }
 
+/**
+ * 首页公开统计数据（无需登录）
+ * 返回真实的数据库统计值，用于用户首页卡片展示
+ */
+async function homeStats(): Promise<{
+    quoteTotal: number;
+    categoryTotal: number;
+    templateTotal: number;
+    dailyRecommendCount: number;
+}> {
+    const today = startOfDay(new Date());
+    const tomorrow = new Date(today.getTime() + 24 * 60 * 60 * 1000);
+
+    const [quoteTotal, categoryTotal, templateTotal, dailyCount] = await Promise.all([
+        prisma.quote.count({ where: { isActive: true, auditStatus: 1 } }),
+        prisma.category.count({ where: { status: 1 } }),
+        prisma.compositionTemplate.count({ where: { status: 1 } }),
+        prisma.dailyRecommendQuote.count({
+            where: { recommend: { recommendDate: { gte: today, lt: tomorrow } } },
+        }),
+    ]);
+
+    return {
+        quoteTotal,
+        categoryTotal,
+        templateTotal,
+        dailyRecommendCount: dailyCount,
+    };
+}
+
 function startOfDay(d: Date): Date {
     const x = new Date(d);
     x.setHours(0, 0, 0, 0);
     return x;
 }
 
-export { dashboard };
+export { dashboard, homeStats };
 

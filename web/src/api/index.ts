@@ -28,6 +28,10 @@ export const dailyApi = {
   today: () => apiGet<DailyRecommend>("/v1/daily-recommend/today"),
 };
 
+export const statsApi = {
+  home: () => apiGet<{ quoteTotal: number; categoryTotal: number; templateTotal: number; dailyRecommendCount: number }>("/v1/stats/home"),
+};
+
 export const collectionApi = {
   list: () => apiGet<any[]>("/v1/collections/"),
   create: (data: { name: string; description?: string }) => apiPost("/v1/collections/", data),

@@ -6,3 +6,8 @@ export const dashboard = catchAsync(async (_req, res) => {
   const result = await statsService.dashboard();
   ok(res, result);
 });
+
+export const homeStats = catchAsync(async (_req, res) => {
+  const result = await statsService.homeStats();
+  ok(res, result);
+});
