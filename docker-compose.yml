@@ -1,16 +1,33 @@
-# ====== 拾句 · Docker Compose 一键部署 ======
+# ====================================================================
+# 拾句 · Docker Compose 一键部署
 # 使用方式：
 #   1. 复制 .env.example 为 .env 并修改配置
 #   2. docker compose up -d --build
-#   3. 访问 http://localhost:8080/admin/login
-#
-# 数据库模式：
-#   - 默认 SQLite（无需额外服务，数据持久化到 ./server/data）
-#   - 可选 PostgreSQL（生产推荐）：在 .env 里设置 DATABASE_URL + PRISMA_SCHEMA，
-#     并取消注释下方 postgres 服务块，同时让 shiju-server depends_on postgres
+#   3. 访问 http://localhost:8080
+# ====================================================================
 
 services:
-  # ---- 后端 API 服务 ----
+  # ========== PostgreSQL 数据库 ==========
+  postgres:
+    image: postgres:16-alpine
+    container_name: shiju-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: ${PG_USER:-postgres}
+      POSTGRES_PASSWORD: ${PG_PASSWORD:-postgres}
+      POSTGRES_DB: ${PG_DATABASE:-shiju}
+    ports:
+      - "${PG_PORT:-5432}:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-postgres} -d ${PG_DATABASE:-shiju}"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+
+  # ========== 后端 API 服务 ==========
   shiju-server:
     build:
       context: ./server
@@ -18,24 +35,22 @@ services:
     container_name: shiju-server
     restart: unless-stopped
     ports:
-      - "3000:3000"
+      - "${PORT:-3000}:3000"
     environment:
       NODE_ENV: production
-      PORT: 3000
-      # 数据库连接（默认 SQLite；切换 PostgreSQL 时在 .env 设置 DATABASE_URL）
-      DATABASE_URL: ${DATABASE_URL:-file:./data/dev.db}
-      # Prisma schema 文件（切换 PG 时设为 prisma/schema.postgres.prisma）
-      PRISMA_SCHEMA: ${PRISMA_SCHEMA:-}
+      PORT: ${PORT:-3000}
+      # ---- 数据库连接（默认 PostgreSQL）----
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/shiju?schema=public}
+      PRISMA_SCHEMA: ${PRISMA_SCHEMA:-prisma/schema.postgres.prisma}
+      # ---- JWT 配置 ----
       JWT_SECRET: ${JWT_SECRET:-change_in_production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
       ADMIN_KEY: ${ADMIN_KEY:-shiju_admin_key}
     volumes:
-      # SQLite 数据文件持久化（PG 模式下无影响）
-      - ./server/data:/app/data
-    # PostgreSQL 模式下取消注释，确保数据库先启动
-    # depends_on:
-    #   postgres:
-    #     condition: service_healthy
+      - ./server/data:/app/data   # SQLite 数据持久化目录（PG 模式下无影响）
+    depends_on:
+      postgres:
+        condition: service_healthy
     healthcheck:
       test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
       interval: 30s
@@ -43,7 +58,7 @@ services:
       retries: 3
       start_period: 15s
 
-  # ---- 管理后台（Nginx + React 静态） ----
+  # ========== 前端管理后台 ==========
   shiju-web:
     build:
       context: ./web
@@ -61,54 +76,47 @@ services:
       timeout: 5s
       retries: 3
 
-  # ---- 可选：PostgreSQL 生产数据库（生产推荐）----
-  # 使用方式：
-  #   1. 在 .env 设置：DATABASE_URL=postgresql://shiju:shiju_pass_2024@postgres:5432/shiju?schema=public
-  #                    PRISMA_SCHEMA=prisma/schema.postgres.prisma
-  #   2. 取消本块注释
-  #   3. 在 shiju-server 取消 depends_on: postgres 注释
-  #   4. docker compose up -d --build（首次会自动 prisma db push 建表）
-  #
-  #  postgres:
-  #    image: postgres:16-alpine
-  #    container_name: shiju-postgres
-  #    restart: unless-stopped
-  #    environment:
-  #      POSTGRES_USER: ${POSTGRES_USER:-shiju}
-  #      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-shiju_pass_2024}
-  #      POSTGRES_DB: ${POSTGRES_DB:-shiju}
-  #    ports:
-  #      - "5432:5432"
-  #    volumes:
-  #      - postgres_data:/var/lib/postgresql/data
-  #    healthcheck:
-  #      test: ["CMD-SHELL", "pg_isready -U ${POSTGRES_USER:-shiju} -d ${POSTGRES_DB:-shiju}"]
-  #      interval: 10s
-  #      timeout: 5s
-  #      retries: 5
-  #      start_period: 10s
-  #
-  # volumes:
-  #   postgres_data:
+# ========== 数据卷 ==========
+volumes:
+  postgres_data:
 
-  # ---- 可选：MySQL 生产数据库 ----
-  # 如果使用 MySQL，取消注释以下配置，并修改后端 DATABASE_URL
-  #
-  #  mysql:
-  #    image: mysql:8.0
-  #    container_name: shiju-mysql
-  #    restart: unless-stopped
-  #    environment:
-  #      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-shiju_root_2024}
-  #      MYSQL_DATABASE: shiju
-  #      MYSQL_USER: shiju
-  #      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-shiju_pass_2024}
-  #    ports:
-  #      - "3306:3306"
-  #    volumes:
-  #      - mysql_data:/var/lib/mysql
-  #    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
-  #
-  # volumes:
-  #   mysql_data:
+# ====================================================================
+# 以下为可选数据库配置，如需使用请：
+#   1. 取消对应配置块的注释
+#   2. 注释掉上面的 PostgreSQL 服务块
+#   3. 修改 shiju-server 的 DATABASE_URL 及 PRISMA_SCHEMA
+# ====================================================================
 
+# ==================== SQLite（无独立服务，零配置）====================
+# 无需额外服务，修改 shiju-server 的 environment 即可：
+#   DATABASE_URL: "file:./data/dev.db"
+#   PRISMA_SCHEMA: ""
+# 数据库文件保存在 ./server/data/dev.db
+
+# ==================== MySQL（可选，替代 PostgreSQL）====================
+#  mysql:
+#    image: mysql:8.0
+#    container_name: shiju-mysql
+#    restart: unless-stopped
+#    environment:
+#      MYSQL_ROOT_PASSWORD: ${MYSQL_ROOT_PASSWORD:-shiju_root_2024}
+#      MYSQL_DATABASE: shiju
+#      MYSQL_USER: shiju
+#      MYSQL_PASSWORD: ${MYSQL_PASSWORD:-shiju_pass_2024}
+#    ports:
+#      - "3306:3306"
+#    volumes:
+#      - mysql_data:/var/lib/mysql
+#    command: --character-set-server=utf8mb4 --collation-server=utf8mb4_unicode_ci
+#
+#  volumes:
+#    mysql_data:
+
+# ====================================================================
+# 端口速查表
+#   3000  - 后端 API（可通过 PORT 环境变量修改）
+#   5173  - 前端 Vite dev server（仅本地开发）
+#   8080  - 前端 Nginx 生产容器端口
+#   5432  - PostgreSQL（可通过 PG_PORT 修改）
+#   3306  - MySQL（如启用）
+# ====================================================================

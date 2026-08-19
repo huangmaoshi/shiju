@@ -16,8 +16,9 @@ COPY prisma ./prisma/
 # 安装全部依赖（含 devDependencies，编译需要）
 RUN npm install
 
-# 生成 Prisma Client
-RUN npx prisma generate
+# 生成 PostgreSQL 版 Prisma Client（默认生产数据库）
+# 如需 SQLite，改为：RUN npx prisma generate --schema=prisma/schema.prisma
+RUN npx prisma generate --schema=prisma/schema.postgres.prisma
 
 # 拷源码并编译
 COPY tsconfig.json ./
@@ -46,17 +47,17 @@ COPY prisma ./prisma
 # 环境变量默认值（可在 docker-compose / .env 覆盖）
 ENV NODE_ENV=production
 ENV PORT=3000
-ENV DATABASE_URL="file:./dev.db"
+# 默认 PostgreSQL（与构建时生成的 Client 匹配）
+ENV DATABASE_URL="postgresql://postgres:postgres@postgres:5432/shiju?schema=public"
+ENV PRISMA_SCHEMA="prisma/schema.postgres.prisma"
 ENV JWT_SECRET="change_in_production"
 ENV JWT_EXPIRES_IN=2h
 ENV ADMIN_KEY="shiju_admin_key"
-# Prisma schema 文件路径（切换 PostgreSQL 时设为 prisma/schema.postgres.prisma）
-ENV PRISMA_SCHEMA="prisma/schema.prisma"
 
 EXPOSE 3000
 
-# 入口：根据 PRISMA_SCHEMA 生成对应数据库的 Prisma Client + 推送建表，再启动
-# - 默认 SQLite：PRISMA_SCHEMA=prisma/schema.prisma
-# - PostgreSQL：PRISMA_SCHEMA=prisma/schema.postgres.prisma + DATABASE_URL=postgresql://...
+# 入口：仅推送 schema 建表，Client 已在构建时生成
+# 如需切换数据库（SQLite），需重新构建镜像：
+#   docker compose build --no-cache
 ENTRYPOINT ["/sbin/tini", "--"]
-CMD ["sh", "-c", "npx prisma generate --schema=$PRISMA_SCHEMA && npx prisma db push --skip-generate --schema=$PRISMA_SCHEMA && node dist/server.js"]
+CMD ["sh", "-c", "npx prisma db push --skip-generate --schema=$PRISMA_SCHEMA && node dist/server.js"]
