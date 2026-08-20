@@ -50,6 +50,7 @@ class AiClient:
             "temperature": self.temperature,
             "max_tokens": self.max_tokens,
         }
+        logger.info(f"[AiClient] POST {url} model={self.model} max_tokens={self.max_tokens} messages_len={len(messages)}")
         try:
             resp = httpx.post(url, headers=headers, json=payload, timeout=self.timeout_ms / 1000.0)
         except httpx.TimeoutException:
