@@ -1,3 +1,5 @@
+import 'package:shi_ju/models/quote.dart';
+
 class DailyRecommend {
   final String id;
   final String date;

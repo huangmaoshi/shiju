@@ -1,3 +1,5 @@
+import 'package:shi_ju/models/quote.dart';
+
 enum ReciteStatus { pending, reviewing, mastered, skipped }
 
 class RecitePlan {

@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
+import 'package:shi_ju/models/recite_plan.dart';
+import 'package:shi_ju/pages/recite/recite_review_page.dart';
 import 'package:shi_ju/providers/recite_provider.dart';
 import 'package:shi_ju/widgets/empty_state.dart';
 import 'package:shi_ju/widgets/loading_view.dart';
@@ -175,7 +177,7 @@ class _ReciteListPageState extends State<ReciteListPage> {
     );
   }
 
-  Widget _buildPlanList(List plans) {
+  Widget _buildPlanList(List<RecitePlan> plans) {
     final theme = Theme.of(context);
     return ListView.builder(
       itemCount: plans.length,

@@ -58,7 +58,7 @@ class CollectionProvider extends ChangeNotifier {
     }
   }
 
-  Future<Collection?> create({
+  Future<Collection?> createCollection({
     required String name,
     String? description,
     String? coverImage,

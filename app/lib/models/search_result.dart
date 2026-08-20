@@ -1,3 +1,6 @@
+import 'package:shi_ju/models/category.dart';
+import 'package:shi_ju/models/quote.dart';
+
 class SearchResult {
   final List<Quote> quotes;
   final List<Category> categories;

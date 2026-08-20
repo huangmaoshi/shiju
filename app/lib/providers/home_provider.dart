@@ -1,4 +1,4 @@
-import 'package:flutter/foundation.dart';
+import 'package:flutter/foundation.dart' hide Category;
 import 'package:shi_ju/models/category.dart';
 import 'package:shi_ju/models/daily_recommend.dart';
 import 'package:shi_ju/models/quote.dart';
