@@ -142,7 +142,7 @@ def create_categories(db) -> dict:
             db.add(c)
             db.flush()
             ctype = child.get("type", root["type"])
-        category_map[f"{ctype}:{child['name']}"] = c.id
+            category_map[f"{ctype}:{child['name']}"] = c.id
     db.commit()
     logger.info(f"  ✅ 分类创建完成，共 {len(category_map)} 条")
     return category_map
