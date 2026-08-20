@@ -8,6 +8,13 @@ _tmp_*
 # ====== 通用 ======
 node_modules/
 dist/
+
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
 *.log
 *.log.*
 .env

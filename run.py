@@ -1,8 +1,8 @@
 """拾句项目一键启动器
 
 同时启动：
-  1. server-py  —— FastAPI 后端（默认 0.0.0.0:3000）
-  2. crawler-py  —— 爬虫守护进程（默认启用调度器）
+  1. server  —— FastAPI 后端（默认 0.0.0.0:3000）
+  2. crawler  —— 爬虫守护进程（默认启用调度器）
 
 用法：
     python run.py                          # 同时启动后端 + 爬虫
@@ -23,8 +23,8 @@ import threading
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parent
-SERVER_PY = ROOT / "server-py"
-CRAWLER_PY = ROOT / "crawler-py"
+SERVER_PY = ROOT / "server"
+CRAWLER_PY = ROOT / "crawler"
 
 # Windows GBK 控制台宽容处理，防止输出 emoji 等字符时崩溃
 if sys.platform == "win32":
@@ -103,7 +103,7 @@ def spawn(args: list, cwd: Path, prefix: str, env: dict | None = None) -> subpro
 # ---------- 主流程 ----------
 
 def main() -> int:
-    parser = argparse.ArgumentParser(description="拾句项目一键启动（server-py + crawler-py）")
+    parser = argparse.ArgumentParser(description="拾句项目一键启动（server + crawler）")
     parser.add_argument("--host", default=os.getenv("HOST", "0.0.0.0"), help="后端监听地址")
     parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "3000")), help="后端端口")
     parser.add_argument("--no-reload", action="store_true", help="后端关闭热重载（默认开发模式开启）")
@@ -118,14 +118,14 @@ def main() -> int:
 
     python = find_python()
     if not SERVER_PY.exists() and not CRAWLER_PY.exists():
-        print(f"[run] 错误：找不到 server-py 或 crawler-py 目录（当前根目录 {ROOT}）")
+        print(f"[run] 错误：找不到 server 或 crawler 目录（当前根目录 {ROOT}）")
         return 1
 
     procs: list[tuple[str, subprocess.Popen]] = []
 
     if not args.no_server:
         if not SERVER_PY.exists():
-            print("[run] 警告：server-py 目录不存在，跳过后端")
+            print("[run] 警告：server 目录不存在，跳过后端")
         else:
             print(f"[run] 启动后端: {python} run.py --host {args.host} --port {args.port}"
                   f"{'' if args.no_reload else ' (reload)'}")
@@ -141,7 +141,7 @@ def main() -> int:
 
     if not args.no_crawler:
         if not CRAWLER_PY.exists():
-            print("[run] 警告：crawler-py 目录不存在，跳过爬虫")
+            print("[run] 警告：crawler 目录不存在，跳过爬虫")
         else:
             mode = "守护模式(调度器禁用)" if args.crawler_no_schedule else "守护模式(调度器启用)"
             print(f"[run] 启动爬虫: {python} -m crawler.index  ({mode})")
