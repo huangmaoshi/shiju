@@ -56,7 +56,7 @@ class AiClient:
         )
         try:
             logger.info(f"url: {url} \n headers: {headers} \n payload: {payload}")
-            #print(f"url: {url} \n headers: {headers} \n payload: {payload}")
+            print(f"url: {url} \n headers: {headers} \n payload: {payload}")
             resp = httpx.post(url, headers=headers, json=payload, timeout=self.timeout_ms / 1000.0)
         except httpx.TimeoutException:
             raise AiClientError(504, f"AI 请求超时 ({self.timeout_ms}ms)")
