@@ -15,7 +15,6 @@ COPY tsconfig.json tsconfig*.json* ./
 COPY vite.config.ts ./
 COPY index.html ./
 COPY src ./src
-COPY public ./public 2>/dev/null || true
 
 RUN npm run build
 
