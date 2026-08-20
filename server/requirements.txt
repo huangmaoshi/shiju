@@ -9,3 +9,6 @@ APScheduler>=3.10
 reportlab>=4.0
 python-dotenv>=1.0
 opencc-python-reimplemented>=0.1.7
+
+# PostgreSQL 驱动（生产推荐，SQLite 开发可不装）
+psycopg2-binary>=2.9

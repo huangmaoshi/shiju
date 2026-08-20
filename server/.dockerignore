@@ -1,0 +1,26 @@
+# Python
+__pycache__/
+*.py[cod]
+*.egg-info/
+.venv/
+venv/
+
+# 本地数据（容器内自动创建，不复制宿主机的 db）
+data/
+*.db
+*.db-journal
+
+# 环境 & 日志
+.env
+.env.*
+!.env.example
+*.log
+*.log.*
+
+# 文档
+CONVERSION_GUIDE.md
+README.md
+
+# IDE
+.vscode/
+.idea/

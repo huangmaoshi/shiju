@@ -499,60 +499,221 @@ python -m crawler.index                                  # 守护模式（APSche
 
 ## 7. 生产环境部署
 
-### 7.1 后端
+### 7.1 Docker 一键部署（推荐）
+
+项目内置完整的 Docker 部署文件，编排 **PostgreSQL + 后端 + 管理后台** 三个服务，一条命令拉起。
+
+#### 部署文件说明
+
+| 文件 | 说明 |
+|---|---|
+| [docker-compose.yml](docker-compose.yml) | 编排文件：postgres + shiju-server + shiju-web |
+| [server/Dockerfile](server/Dockerfile) | 后端镜像：`python:3.11-slim` + 依赖 + uvicorn 启动 |
+| [server/.dockerignore](server/.dockerignore) | 后端构建排除（`__pycache__` / `data/` / `.env` 等） |
+| [web/Dockerfile](web/Dockerfile) | 前端镜像：`node:20-alpine` 编译 → `nginx:alpine` 托管 |
+| [web/nginx.conf](web/nginx.conf) | Nginx 配置：静态资源 + `/api/*` 反代 `shiju-server:3000` |
+| [.env.example](.env.example) | 环境变量示例（含 PG / SQLite / MySQL 三种 DATABASE_URL） |
+
+#### 快速启动
 
 ```bash
-cd server
-pip install -r requirements.txt
-# 修改 .env 为生产配置（推荐 PostgreSQL）
-NODE_ENV=production python run.py --no-reload --port 3000
-
-# 多 worker（推荐）
-uvicorn app.main:app --host 0.0.0.0 --port 3000 --workers 4
-```
-
-### 7.2 管理后台
-
-```bash
-cd web
-npm run build                 # → dist/（纯静态）
-# Nginx 托管 + /api 反代到后端
-```
-
-### 7.3 Docker 一键部署
-
-项目内置 `docker-compose.yml`，编排 PostgreSQL + 后端 + 管理后台三个服务。
-
-> ⚠️ **注意**：`server/` 目录目前没有 Dockerfile（Python 版尚未提供）。docker-compose 中 `shiju-server` 的 `build: ./server` 需要你自行补一个基于 `python:3.11-slim` 的 Dockerfile，或改用预构建镜像。`web/` 的 Dockerfile 完整可用。
-
-```bash
-# 1. 复制环境变量文件并修改
+# 1. 复制环境变量文件并修改（务必改 JWT_SECRET 和 ADMIN_KEY）
 cp .env.example .env
-# 编辑 .env，修改 JWT_SECRET 和 ADMIN_KEY
 
-# 2. 一键构建并启动
+# 2. 一键构建并启动（首次会拉镜像 + 编译，耗时较长）
 docker compose up -d --build
 
-# 3. 查看日志
+# 3. 查看启动日志（确认健康检查通过）
 docker compose logs -f shiju-server
 
-# 4. 停止
-docker compose down
+# 4. 灌入种子数据（50+ 采集源、分类、系统配置）—— 首次部署可选
+docker compose exec shiju-server python seed.py
 ```
+
+启动顺序：postgres 健康检查通过 → shiju-server 健康检查通过 → shiju-web 启动。
 
 #### 服务地址
 
 | 服务 | 地址 | 说明 |
 |---|---|---|
-| 后端 API | `http://localhost:3000` | FastAPI + SQLAlchemy |
-| 管理后台 | `http://localhost:8080/admin/login` | Nginx + React 静态 |
-| 健康检查 | `http://localhost:3000/api/health` | API 存活探测 |
+| 后端 API | `http://localhost:3000` | FastAPI + SQLAlchemy，健康检查 `/api/health` |
+| 管理后台 | `http://localhost:8080/admin/login` | Nginx + React 静态，Admin Key 为 `ADMIN_KEY` |
+| PostgreSQL | `localhost:5432` | 可通过 `PG_PORT` 修改 |
 
-#### 数据持久化
+#### 常用运维命令
 
-- SQLite 模式（默认）：数据库文件保存在 `server/data/dev.db`
-- PostgreSQL 模式（生产推荐）：在 `.env` 设置 `DATABASE_URL=postgresql://...`，使用 docker-compose 内置的 postgres 服务
-- MySQL 模式：在 `.env` 设置 `DATABASE_URL=mysql://...`，取消注释 `docker-compose.yml` 中的 MySQL 配置块
+```bash
+# 查看全部服务状态
+docker compose ps
+
+# 查看某服务实时日志
+docker compose logs -f shiju-server
+docker compose logs -f shiju-web
+
+# 重启某个服务
+docker compose restart shiju-server
+
+# 代码更新后重新构建并启动
+docker compose up -d --build shiju-server
+
+# 进入后端容器排查
+docker compose exec shiju-server bash
+
+# 停止全部服务（数据卷保留）
+docker compose down
+
+# 停止并删除数据卷（⚠️ 清空 PostgreSQL 数据）
+docker compose down -v
+```
+
+#### 切换数据库
+
+默认使用 docker-compose 内置的 PostgreSQL。如需切换：
+
+**SQLite（容器内，零配置快速起步）：**
+编辑 `docker-compose.yml` 的 `shiju-server.environment`：
+```yaml
+DATABASE_URL: "sqlite:///data/dev.db"
+```
+并注释掉 `postgres` 服务块和 `shiju-server.depends_on`。数据通过 `./server/data:/app/data` 卷持久化。
+
+**MySQL：**
+取消注释 `docker-compose.yml` 末尾的 MySQL 服务块，修改 `DATABASE_URL` 为 `mysql://...`（注意 requirements.txt 需补装 `PyMySQL`）。
+
+#### 架构图
+
+```
+┌──────────────────────────────────────────────────────────┐
+│  docker-compose                                          │
+│                                                          │
+│  ┌─────────────────────────────────────────────────┐    │
+│  │  shiju-web (Nginx)         端口 8080 → 80       │    │
+│  │  静态资源 /usr/share/nginx/html                 │    │
+│  │  /api/* → proxy_pass → shiju-server:3000        │    │
+│  └──────────────────────┬──────────────────────────┘    │
+│                         │ depends_on (healthy)          │
+│  ┌──────────────────────▼──────────────────────────┐    │
+│  │  shiju-server (Python 3.11)  端口 3000         │    │
+│  │  uvicorn app.main:app --host 0.0.0.0            │    │
+│  │  启动时自动建表 + 建管理员 + 启动 cron 调度     │    │
+│  │  数据卷 ./server/data → /app/data（SQLite 用）  │    │
+│  └──────────────────────┬──────────────────────────┘    │
+│                         │ depends_on (healthy)          │
+│  ┌──────────────────────▼──────────────────────────┐    │
+│  │  postgres (PostgreSQL 16)   端口 5432          │    │
+│  │  数据卷 postgres_data                          │    │
+│  └─────────────────────────────────────────────────┘    │
+└──────────────────────────────────────────────────────────┘
+```
+
+---
+
+### 7.2 手动部署（不用 Docker）
+
+适合已有服务器环境、或需要更细粒度控制时使用。
+
+#### 7.2.1 后端部署
+
+```bash
+cd server
+pip install -r requirements.txt
+
+# 生产配置：复制 .env.example 为 .env 并修改
+cp ../.env.example .env
+# 编辑 .env：
+#   NODE_ENV=production
+#   DATABASE_URL=postgresql://user:pass@your-pg-host:5432/shiju
+#   JWT_SECRET=<强随机串>
+#   ADMIN_KEY=<强随机串>
+
+# 方式一：直接启动（单进程，reload 已自动关闭）
+NODE_ENV=production python run.py --no-reload --port 3000
+
+# 方式二：uvicorn 多 worker（推荐生产）
+uvicorn app.main:app --host 0.0.0.0 --port 3000 --workers 4
+
+# 首次部署灌入种子数据
+python seed.py
+```
+
+**用 systemd 托管后端进程**（推荐，开机自启 + 崩溃重启）：
+
+```ini
+# /etc/systemd/system/shiju-server.service
+[Unit]
+Description=ShiJu Server (FastAPI)
+After=network.target postgresql.service
+
+[Service]
+Type=simple
+User=www-data
+WorkingDirectory=/opt/shiju/server
+EnvironmentFile=/opt/shiju/server/.env
+ExecStart=/opt/shiju/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 3000 --workers 4
+Restart=always
+RestartSec=5
+
+[Install]
+WantedBy=multi-user.target
+```
+
+```bash
+sudo systemctl daemon-reload
+sudo systemctl enable --now shiju-server
+sudo systemctl status shiju-server
+sudo journalctl -u shiju-server -f   # 查看日志
+```
+
+#### 7.2.2 管理后台部署
+
+```bash
+cd web
+npm install
+npm run build                 # → dist/（纯静态文件）
+```
+
+把 `dist/` 内容拷到 Nginx 静态目录，配置 SPA 回退 + `/api` 反代：
+
+```nginx
+# /etc/nginx/conf.d/shiju.conf
+server {
+    listen 80;
+    server_name your-domain.com;
+    root /var/www/shiju-web;
+    index index.html;
+
+    # SPA 路由回退
+    location / {
+        try_files $uri $uri/ /index.html;
+    }
+
+    # API 反代到后端
+    location /api/ {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # AI 接口可能较慢
+        proxy_read_timeout 120s;
+        proxy_send_timeout 120s;
+    }
+
+    # 静态资源缓存
+    location ~* \.(js|css|png|jpg|jpeg|gif|ico|svg|woff|woff2|ttf|eot)$ {
+        expires 30d;
+        add_header Cache-Control "public, immutable";
+    }
+
+    gzip on;
+    gzip_types text/plain text/css application/json application/javascript;
+    gzip_min_length 1024;
+}
+```
+
+```bash
+sudo nginx -t && sudo systemctl reload nginx
+```
 
 ---
 
@@ -642,4 +803,4 @@ curl http://localhost:3000/api/health
 | 审核流程 | 人工批量审核 | 可考虑接入 AI 辅助审核 |
 | 独立 crawler/ 子模块 | 已实现但后端内置 github_import_service 已覆盖主要场景 | 如需抓古诗文网等 HTML 动态页再启用 |
 | Redis | 未引入 | 可用于缓存每日推荐、热门搜索词、采集速率限制 |
-| Docker | web 完整可用，server 需补 Dockerfile | 为 Python server 补 Dockerfile 后即可一键 docker compose |
+| Docker | 三件套（compose + server/Dockerfile + web/Dockerfile）已完整 | 可考虑多阶段构建进一步缩小镜像 |

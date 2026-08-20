@@ -1,9 +1,10 @@
 # ====================================================================
-# 拾句 · Docker Compose 一键部署
+# 拾句 · Docker Compose 一键部署（Python 版）
 # 使用方式：
 #   1. 复制 .env.example 为 .env 并修改配置
 #   2. docker compose up -d --build
-#   3. 访问 http://localhost:8080
+#   3. 访问 http://localhost:8080  （管理后台）
+#                    http://localhost:3000  （后端 API）
 # ====================================================================
 
 services:
@@ -27,7 +28,7 @@ services:
       retries: 5
       start_period: 10s
 
-  # ========== 后端 API 服务 ==========
+  # ========== 后端 API 服务（Python · FastAPI · uvicorn）==========
   shiju-server:
     build:
       context: ./server
@@ -40,25 +41,27 @@ services:
       NODE_ENV: production
       PORT: ${PORT:-3000}
       # ---- 数据库连接（默认 PostgreSQL）----
-      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/shiju?schema=public}
-      PRISMA_SCHEMA: ${PRISMA_SCHEMA:-prisma/schema.postgres.prisma}
+      # 注意：SQLAlchemy 的连接串，不要带 Prisma 的 ?schema=public 等参数
+      DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/shiju}
       # ---- JWT 配置 ----
       JWT_SECRET: ${JWT_SECRET:-change_in_production}
       JWT_EXPIRES_IN: ${JWT_EXPIRES_IN:-2h}
       ADMIN_KEY: ${ADMIN_KEY:-shiju_admin_key}
     volumes:
-      - ./server/data:/app/data   # SQLite 数据持久化目录（PG 模式下无影响）
+      # SQLite 模式下数据持久化（PG 模式无影响）
+      - ./server/data:/app/data
     depends_on:
       postgres:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost:3000/api/health"]
+      # 用 curl 探测健康检查端点（python:3.11-slim 已装 curl）
+      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
-      start_period: 15s
+      start_period: 20s
 
-  # ========== 前端管理后台 ==========
+  # ========== 前端管理后台（React + Nginx）==========
   shiju-web:
     build:
       context: ./web
@@ -71,7 +74,7 @@ services:
       shiju-server:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "wget", "--spider", "-q", "http://localhost/"]
+      test: ["CMD-SHELL", "wget --spider -q http://localhost/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -84,14 +87,14 @@ volumes:
 # 以下为可选数据库配置，如需使用请：
 #   1. 取消对应配置块的注释
 #   2. 注释掉上面的 PostgreSQL 服务块
-#   3. 修改 shiju-server 的 DATABASE_URL 及 PRISMA_SCHEMA
+#   3. 修改 shiju-server 的 DATABASE_URL
 # ====================================================================
 
 # ==================== SQLite（无独立服务，零配置）====================
-# 无需额外服务，修改 shiju-server 的 environment 即可：
-#   DATABASE_URL: "file:./data/dev.db"
-#   PRISMA_SCHEMA: ""
-# 数据库文件保存在 ./server/data/dev.db
+# 无需额外服务，只需在 shiju-server 的 environment 改为：
+#   DATABASE_URL: "sqlite:///data/dev.db"
+# 然后注释掉 postgres 服务块和 depends_on
+# 数据库文件通过 ./server/data:/app/data 卷持久化
 
 # ==================== MySQL（可选，替代 PostgreSQL）====================
 #  mysql:

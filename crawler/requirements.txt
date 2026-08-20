@@ -3,3 +3,6 @@ beautifulsoup4>=4.12
 APScheduler>=3.10
 python-dotenv>=1.0
 sqlalchemy>=2.0
+
+# PostgreSQL 驱动（生产推荐，复用 server 模型时需要）
+psycopg2-binary>=2.9
