@@ -1,0 +1,95 @@
+# 拾句 iOS App 构建工作流
+# 触发：push tag v* 或手动 Run workflow
+# 产出：Runner.app / .xcarchive（上传到 Artifacts）
+#
+# 需要 Apple Developer 账号，在 GitHub Secrets 配置：
+#   BUILD_CERTIFICATE_BASE64         - 分发证书（.p12，base64 编码）
+#   BUILD_PROVISION_PROFILE_BASE64   - 描述文件（.mobileprovision，base64 编码）
+#   P12_PASSWORD                     - 证书密码
+#   KEYCHAIN_PASSWORD                - 钥匙串密码（任意随机串即可）
+#   API_BASE_URL（可选）              - 生产 API 地址，如 https://api.example.com/api/v1
+#
+# 未配齐证书时仍会执行 build ios --no-codesign（仅生成未签名的 .app，不能上架）
+
+name: Build iOS
+
+on:
+  push:
+    tags:
+      - 'v*'
+    paths:
+      - 'app/**'
+      - '.github/workflows/build-ios.yml'
+  workflow_dispatch:
+
+jobs:
+  build-ios:
+    runs-on: macos-latest
+    defaults:
+      run:
+        working-directory: app
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: subosito/flutter-action@v2
+        with:
+          channel: stable
+          cache: true
+
+      - name: Flutter version
+        run: flutter --version
+
+      - name: Generate native ios project
+        # app/ 目录缺少 ios/ 原生工程，首次构建需要生成
+        run: flutter create . --org com.shiju --project-name shi_ju --platforms=ios
+
+      - name: Install dependencies
+        run: flutter pub get
+
+      - name: Analyze
+        run: flutter analyze || true
+
+      - name: Import signing certificate
+        # 只有配置了证书 Secrets 才执行签名，否则跳过
+        if: ${{ secrets.BUILD_CERTIFICATE_BASE64 != '' }}
+        env:
+          BUILD_CERTIFICATE_BASE64: ${{ secrets.BUILD_CERTIFICATE_BASE64 }}
+          P12_PASSWORD: ${{ secrets.P12_PASSWORD }}
+          KEYCHAIN_PASSWORD: ${{ secrets.KEYCHAIN_PASSWORD }}
+        run: |
+          # 创建临时钥匙串
+          security create-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+          security default-keychain -s build.keychain
+          security unlock-keychain -p "$KEYCHAIN_PASSWORD" build.keychain
+
+          # 导入证书
+          echo "$BUILD_CERTIFICATE_BASE64" | base64 --decode > certificate.p12
+          security import certificate.p12 -k build.keychain -P "$P12_PASSWORD" -T /usr/bin/codesign
+          security set-key-partition-list -S apple-tool:,apple: -k "$KEYCHAIN_PASSWORD" build.keychain
+
+          # 导入描述文件
+          mkdir -p ~/Library/MobileDevice/Provisioning\ Profiles
+          echo "${{ secrets.BUILD_PROVISION_PROFILE_BASE64 }}" | base64 --decode > ~/Library/MobileDevice/Provisioning\ Profiles/build.mobileprovision
+
+      - name: Build iOS (signed)
+        # 配置了证书时走签名构建
+        if: ${{ secrets.BUILD_CERTIFICATE_BASE64 != '' }}
+        run: |
+          flutter build ios --release \
+            ${{ secrets.API_BASE_URL != '' && format('--dart-define=API_BASE_URL={0}', secrets.API_BASE_URL) || '' }}
+
+      - name: Build iOS (unsigned, fallback)
+        # 未配置证书时退化为不签名构建（仅生成 .app，不能上架 App Store）
+        if: ${{ secrets.BUILD_CERTIFICATE_BASE64 == '' }}
+        run: |
+          flutter build ios --release --no-codesign \
+            ${{ secrets.API_BASE_URL != '' && format('--dart-define=API_BASE_URL={0}', secrets.API_BASE_URL) || '' }}
+
+      - name: Upload to Artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: app-release-ios
+          path: |
+            app/build/ios/iphoneos/Runner.app
+            app/build/ios/archive/*.xcarchive
+          retention-days: 30
