@@ -2,9 +2,44 @@
 
 > 面向中学生 / 写作者的金句收藏与作文素材应用，提供内容浏览、搜索、收藏、背诵打卡、每日推荐、**AI 金句提取**、**AI 拼音标注**、**AI 繁转简**、**AI 自动分类**（支持 OpenAI / 百炼 / 千帆 / 智谱 / DeepSeek / Moonshot / **火山方舟** 等主流大模型）、**GitHub 数据自动采集**、**原文审核流程**、VIP 会员体系等功能。
 
+**产品定位**：面向学生群体的轻量化作文素材工具 + 金句卡片生成器。
+**核心优势**：素材全、分类准、AI 金句提取、定时自动采集、一键卡片化、无冗余功能。
+
 ---
 
-## 1. 项目架构
+## 1. 产品概述
+
+### 1.1 产品背景
+
+初高中、大学生群体长期存在作文素材积累、文案摘抄需求，但现有产品普遍存在四个痛点：
+
+- 素材杂乱无分类，找对应主题的金句效率极低
+- 只有文字内容，无适配社交平台的可视化输出
+- 功能臃肿、广告泛滥，纯工具体验差
+- 优质金句需要自己从原文里抠，没有 AI 辅助提取
+
+「拾句」以「精准素材 + AI 自动提取金句 + 一键卡片化 + 定时自动采集」为核心，主打干净、高效、高颜值。
+
+### 1.2 目标用户
+
+| 用户群体 | 典型场景 |
+|---|---|
+| 初高中学生（12-18 岁） | 高考/中考作文素材积累、考前押题素材包 |
+| 大学生（18-22 岁） | 四六级/考研作文、日常文案摘抄 |
+| 文案爱好者 / 教师 | 备课素材参考、灵感收集 |
+
+### 1.3 核心价值
+
+- **精准分类素材库**：按作文主题、内容类型双维度分类，标注适用场景
+- **AI 金句自动提取**：大模型从原文里批量挖掘高质量金句，自动去重
+- **定时自动采集**：50+ 合规数据源，Cron 定时采集入库
+- **原文审核机制**：AI/采集的内容先入库待审，人工过审才对用户展示
+- **零门槛金句卡片**：多套精美模板，一键生成高清配图
+- **全场景摘抄体验**：每日推荐、随机灵感、收藏管理、自建金句、云同步
+
+---
+
+## 2. 项目架构
 
 ### 整体架构
 
@@ -20,28 +55,28 @@
           │                         │                            │
           ▼                         ▼                            ▼
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│              后端 API 层   Node.js + Express 4 + TypeScript                 │
+│              后端 API 层   Python 3.10+ · FastAPI · SQLAlchemy 2.x          │
 │                                                                             │
-│  Controller → Service → Prisma → SQLite / PostgreSQL / MySQL               │
-│  中间件：JWT 鉴权 / Admin Key / 会员拦截 / 限流 / 错误处理 / CORS / Helmet    │
+│  Router(APIRouter) → Service → SQLAlchemy → SQLite / PostgreSQL / MySQL   │
+│  依赖注入：JWT 鉴权 / Admin Key / 会员拦截 / 限流 / 异常处理 / CORS          │
 │                                                                             │
 │  内置能力：                                                                   │
 │  ┌──────────────────┐  ┌───────────────────┐  ┌──────────────────────────┐  │
-│  │  AI 金句提取服务   │  │  GitHub 直导入服务   │  │  Cron 定时采集调度器        │  │
-│  │  多 Provider 兼容  │  │  自动 URL 编码       │  │  node-cron 驱动           │  │
+│  │  AI 金句提取服务   │  │  GitHub 直导入服务   │  │  APScheduler 定时采集调度  │  │
+│  │  多 Provider 兼容  │  │  自动 URL 编码       │  │  CronTrigger 驱动         │  │
 │  │  OpenAI 协议统一   │  │  超时 + 自动重试      │  │  任务可配置启停/立即执行   │  │
 │  └──────────────────┘  └───────────────────┘  └──────────────────────────┘  │
 │                                                                             │
 │  ┌──────────────────┐  ┌───────────────────┐  ┌──────────────────────────┐  │
 │  │  AI 拼音标注       │  │  AI 繁转简           │  │  AI 自动分类               │  │
-│  │  逐字标注带声调     │  │  本地映射（零成本）    │  │  自动注入分类列表          │  │
+│  │  逐字标注带声调     │  │  本地 OpenCC 映射    │  │  自动注入分类列表          │  │
 │  │  提示词可配置       │  │  + AI 精准转换        │  │  多维度分类树 70+ 节点     │  │
 │  └──────────────────┘  └───────────────────┘  └──────────────────────────┘  │
 │                                                                             │
 │  ┌──────────────────┐  ┌───────────────────┐  ┌──────────────────────────┐  │
-│  │  一键批量处理       │  │  原文审核流程        │  │  Prisma ORM + SQLite       │  │
+│  │  一键批量处理       │  │  原文审核流程        │  │  SQLAlchemy + SQLite       │  │
 │  │  拼音/提取/繁转简   │  │  批量审核接口        │  │  开发轻量 / 生产 PG/MySQL   │  │
-│  │  分类 一键搞定      │  │  待审原文不对用户展示│  │  schema 已含全部采集字段    │  │
+│  │  分类 一键搞定      │  │  待审原文不对用户展示│  │  模型字段对齐 Prisma schema │  │
 │  └──────────────────┘  └───────────────────┘  └──────────────────────────┘  │
 └─────────────────────────────────────────────────────────────────────────────┘
           │                              │
@@ -49,14 +84,14 @@
 ┌───────────────────────┐  ┌───────────────────────────────────────────────┐
 │  数据库 (SQLite/PG/MySQL) │  │  GitHub Raw / 公网 JSON 数据源                │
 │  原文 / 金句 / 采集 / AI │  │  chinese-poetry / poetry-dataset / quotes ... │
-│  配置 / 会员 / 订单      │  │  （后端内置 HTTP fetch + 30s 超时 + 3 次重试）  │
+│  配置 / 会员 / 订单      │  │  （httpx + 30s 超时 + 3 次重试）              │
 └───────────────────────┘  └───────────────────────────────────────────────┘
 
 ┌─────────────────────────────────────────────────────────────────────────────┐
-│              独立采集子模块  crawler/（可选，已有的代码实现）                   │
+│              独立采集子模块  crawler/（Python，可选）                          │
 │  providers: GitHubDataset / GuWenWen / MingYan / WikiQuote                 │
-│  engine: Got + Cheerio + 自建 SimHash 去重                                    │
-│  后端内置 github_import_service 已经可以直接用                              │
+│  engine: httpx + BeautifulSoup + 复用 server 的 SimHash 去重                 │
+│  复用 server 的 SQLAlchemy 模型，连同一个数据库，不另建库                   │
 └─────────────────────────────────────────────────────────────────────────────┘
 ```
 
@@ -64,30 +99,43 @@
 
 ```
 拾句/
-├── server/                     # 后端 API 服务（Node.js + Express + Prisma）
-│   ├── prisma/                 #   数据库模型 + 种子数据 + SQLite 文件
-│   │   ├── schema.prisma       #     全部数据模型（SQLite 版，默认）
-│   │   ├── schema.postgres.prisma #   PostgreSQL 版 schema（provider=postgresql）
-│   │   └── seed.ts             #     初始化采集源、分类、系统配置
-│   ├── src/
-│   │   ├── config/             #   配置加载
-│   │   ├── controllers/        #   控制器（20+，涵盖用户/内容/AI/采集/审核）
-│   │   ├── services/           #   业务逻辑层
-│   │   │   ├── ai_service.ts           # AI 金句提取任务管理
-│   │   │   ├── github_import_service.ts # GitHub 直导入（带超时+重试+去重）
-│   │   │   ├── cron_service.ts         # 定时采集调度器（node-cron）
-│   │   │   ├── original_text_service.ts# 原文库服务
+├── server/                     # 后端 API 服务（Python 3.10+ · FastAPI · SQLAlchemy）
+│   ├── app/
+│   │   ├── api/                #   22 组路由（APIRouter）
+│   │   │   ├── admin_routes.py         # 管理后台全部 API（admin 依赖）
+│   │   │   ├── ai_routes.py            # AI 提取任务接口
+│   │   │   ├── auth_routes.py          # 注册/登录/JWT
+│   │   │   ├── original_text_routes.py # 原文管理 + 选段加金句
+│   │   │   ├── quote_routes.py          # 金句 CRUD
+│   │   │   └── ...（ad/card/category/collection/composition/custom_quote/
+│   │   │             daily_recommend/export/member/order/recite/search/
+│   │   │             stats/sync/theme_package/user）
+│   │   ├── services/           #   23 个业务服务
+│   │   │   ├── ai_service.py           # AI 提取任务管理
+│   │   │   ├── github_import_service.py# GitHub Raw 直导入（超时+重试+去重）
+│   │   │   ├── cron_service.py         # APScheduler 定时采集调度器
+│   │   │   ├── original_text_service.py
 │   │   │   └── ...
-│   │   ├── middlewares/        #   auth / admin / feature / rate_limit / error
-│   │   ├── routes/             #   17 组路由
 │   │   ├── utils/              #   工具函数
-│   │   │   ├── ai_client.ts           # AI HTTP 客户端（统一 OpenAI 协议）
-│   │   │   ├── dedup.ts               # MD5 + SimHash 去重引擎
-│   │   │   └── ...
-│   │   ├── types/              #   TypeScript 类型
-│   │   ├── app.ts              #   Express 应用组装
-│   │   └── server.ts           #   启动入口 + CronScheduler 自动启动
-│   └── package.json
+│   │   │   ├── ai_client.py           # AI HTTP 客户端（统一 OpenAI 协议，httpx）
+│   │   │   ├── dedup.py                # MD5 + SimHash 去重引擎
+│   │   │   ├── jwt.py                  # PyJWT 签发/校验
+│   │   │   ├── password.py            # PBKDF2-SHA512
+│   │   │   ├── trad_to_simpl.py       # 本地 OpenCC 繁简转换
+│   │   │   ├── crawl_url.py            # GitHub Raw URL 拼接（中文路径编码）
+│   │   │   ├── user_rights.py          # 会员权益判断
+│   │   │   ├── response.py            # 统一 ok()/error() 响应
+│   │   │   └── logger.py
+│   │   ├── config.py           # 配置（PORT/DB/JWT/ADMIN_KEY）
+│   │   ├── database.py         # SQLAlchemy engine + SessionLocal + init_db
+│   │   ├── deps.py             # 依赖：BusinessError / get_current_user_id /
+│   │   │                        #   require_admin / require_feature / require_member
+│   │   ├── models.py           # SQLAlchemy 全部模型（表名/列名对齐 Prisma）
+│   │   └── main.py             # FastAPI 应用组装 + 启动引导（建表/默认管理员/cron）
+│   ├── data/                   #   SQLite 数据库文件目录（dev.db）
+│   ├── seed.py                 #   种子数据：50+ 采集源、分类、系统配置
+│   ├── run.py                  #   启动入口（uvicorn，等价 uvicorn app.main:app）
+│   └── requirements.txt
 │
 ├── web/                        # 管理后台（React 18 + Vite + Ant Design + Tailwind）
 │   ├── src/
@@ -109,43 +157,52 @@
 │       ├── services/           #   15 组 API 客户端
 │       └── widgets/            #   公共组件
 │
-├── crawler/                    # 独立采集子模块（可选，已实现的代码版本）
-│   └── src/
-│       ├── providers/          #   GitHubDataset / GuWenWen / MingYan / WikiQuote
-│       ├── engine/             #   deduper / http_client / parser
-│       └── processors/         #   content_cleaner / db_writer / sensitive_checker
+├── crawler/                    # 独立采集子模块（Python，可选）
+│   ├── crawler/
+│   │   ├── providers/          #   GitHubDataset / GuWenWen / MingYan / WikiQuote
+│   │   ├── engine/             #   deduper / http_client(httpx) / parser(BeautifulSoup)
+│   │   ├── processors/         #   content_cleaner / db_writer / sensitive_checker
+│   │   ├── config.py / db.py / logger.py / scheduler.py / index.py
+│   ├── index.py                #   入口 shim（python index.py --list）
+│   ├── requirements.txt
+│   └── README.md                #   爬虫使用说明
 │
-├── README.md
-├── 产品文档.md
-├── 技术编码文档.md
-├── docker-compose.yml          # Docker 一键部署
+├── run.py                      # 项目根一键启动器（同时拉起 server + crawler）
+├── docker-compose.yml          # Docker 一键部署（PostgreSQL + server + web）
 ├── .env.example                # 环境变量示例
-└── .gitignore
+├── .gitignore
+└── README.md
 ```
 
 ### 技术栈
 
 | 模块 | 技术 | 说明 |
 |---|---|---|
-| 后端运行时 | Node.js ≥ 18（推荐 20 LTS） | Express 4.x |
-| 后端语言 | TypeScript 5 | 路径别名 `@/` 指向 `src/` |
-| ORM | Prisma 5 | SQLite（开发）/ PostgreSQL（生产推荐）/ MySQL |
-| 鉴权 | JWT (jsonwebtoken) + Admin Key | 双鉴权：用户端 Bearer Token / 管理后台 x-admin-key |
-| 密码存储 | PBKDF2-SHA512 | 零依赖 Node 内置 crypto |
-| 日志 | Winston + Morgan | 文件 + 控制台 |
-| 参数校验 | Zod | 输入安全 |
-| AI 接入 | **OpenAI 兼容协议**（HTTP fetch） | 金句提取 / 拼音标注 / 繁转简 / 自动分类，提示词模板可配置 |
-| 本地繁简转换 | 纯 JS 映射表（`trad_to_simpl.ts`） | 1000+ 常用繁简字映射，零 API 成本 |
-| 定时任务 | node-cron | 采集调度器，Cron 表达式可配置 |
+| 后端运行时 | Python ≥ 3.10 | 推荐 3.11+ |
+| 后端框架 | **FastAPI** ≥ 0.110 | ASGI，Pydantic 自动校验 |
+| ASGI 服务器 | uvicorn[standard] ≥ 0.29 | 开发热重载 / 生产多 worker |
+| ORM | **SQLAlchemy** 2.x | declarative_base + sessionmaker |
+| 数据库 | SQLite（开发）/ PostgreSQL（生产推荐）/ MySQL | 通过 `DATABASE_URL` 切换 |
+| 数据校验 | Pydantic ≥ 2.6 | FastAPI 内置 |
+| 鉴权 | **PyJWT** ≥ 2.8 + Admin Key | 双鉴权：用户端 Bearer Token / 管理后台 x-admin-key |
+| 密码存储 | PBKDF2-SHA512 | `hashlib.pbkdf2_hmac` |
+| 日志 | logging | 文件 + 控制台 |
+| AI 接入 | **OpenAI 兼容协议**（httpx） | 金句提取 / 拼音标注 / 繁转简 / 自动分类，提示词模板可配置 |
+| 本地繁简转换 | **opencc-python-reimplemented** | 零 API 成本 |
+| PDF 导出 | reportlab ≥ 4.0 | 摘抄本导出 |
+| 定时任务 | **APScheduler** ≥ 3.10 | CronTrigger，任务可启停/立即执行 |
 | 去重算法 | **MD5 精确匹配 + SimHash 相似度** | 短文本 <100 字 MD5，长文本 ≥100 字 SimHash（汉明距离 ≤10 → 相似度 >85%） |
-| GitHub 直导入 | Node.js 原生 fetch + AbortController | 30s 超时、3 次自动重试、指数退避、中文路径自动 URL 编码 |
+| GitHub 直导入 | httpx | 30s 超时、3 次自动重试、指数退避、中文路径自动 URL 编码 |
+| HTTP 客户端（爬虫） | httpx + BeautifulSoup4 | 复用 server 的 SQLAlchemy 模型 |
 | 管理后台 | React 18 + Ant Design 5 + Vite + Tailwind | 5173 端口，开发代理 `/api/*` → :3000 |
 | 移动端 | Flutter 3.x | Provider + Dio |
-| 容器化 | Docker + docker-compose | node:20-alpine |
+| 容器化 | Docker + docker-compose | python:3.11-slim / node:20-alpine / nginx |
+
+> 说明：项目曾以 Node.js + Express + Prisma 实现，后端 crawler/server 已整体迁移到 Python（FastAPI + SQLAlchemy）。SQLAlchemy 模型的表名/列名保持原 Prisma schema 命名，保证数据兼容。
 
 ---
 
-## 2. 核心功能一览
+## 3. 核心功能一览
 
 ### 用户端功能
 - 首页随机推荐 / 每日精选金句
@@ -164,10 +221,10 @@
 - 金句 CRUD + 启用开关
 - 原文库管理（原文录入 + 选段生成金句 + MD5/SimHash 自动指纹）
 - **AI 金句提取**：多模型配置（OpenAI/百炼/千帆/智谱/DeepSeek/Moonshot/**火山方舟**）、单篇/批量任务、**自动 SimHash 去重**、提示词模板可配置
-- **AI 拼音标注**：逐字标注带声调拼音，金句和原文均支持，单条/批量/一键处理，提示词模板可配置
-- **AI 繁转简**：**本地纯 JS 映射**（1000+ 常用繁简字，零 API 成本）+ AI 精准转换双模式，单条/批量/一键处理
-- **AI 自动分类**：自动获取现有分类列表注入 AI 提示词，AI 从分类列表中选择最合适分类（1-5个），金句和原文均支持，单条/批量/一键处理，提示词模板可配置
-- **一键批量处理**：一键生成缺失拼音 + 一键提取零金句原文 + 一键繁转简 + 一键自动分类，串行处理带进度追踪
+- **AI 拼音标注**：逐字标注带声调拼音，金句和原文均支持，单条/批量/一键处理
+- **AI 繁转简**：**本地 OpenCC 映射**（零 API 成本）+ AI 精准转换双模式
+- **AI 自动分类**：自动获取现有分类列表注入 AI 提示词，AI 选择 1-5 个最合适分类
+- **一键批量处理**：一键生成缺失拼音 + 一键提取零金句原文 + 一键繁转简 + 一键自动分类
 - **AI 稳定性**：支持重试次数、超时时间、批量并发数配置，请求失败自动重试
 - **采集管理**：
   - 采集源管理（50+ 预设源，覆盖古诗/词/文/语录/台词）
@@ -180,6 +237,7 @@
 - 系统配置（默认试用天数 / 微信支付 AppID-MchID-APIKey）
 
 ### 会员体系
+
 ```
 试用用户  →  自动注册即送 N 天（后台可配）
    ↓ 到期
@@ -190,6 +248,12 @@
 高级会员（memberLevel=2）
 ```
 
+| 档位 | 价格 | 权益 |
+|---|---|---|
+| 月卡 | 6 元 | 全素材自由看、无广告、卡片无水印 |
+| 季卡 | 15 元（5 元/月） | 同月卡 |
+| 年卡 | 48 元（4 元/月，主推） | 同月卡 + 离线下载 + 无限导出 |
+
 ### 内容合规
 - 合规内容标记（不限于公版）：`complianceTag = public_domain / mit / apache / cc0 / translated`
 - 采集源 `protocol` 字段标注协议类型（PD / MIT / Apache-2.0 / CC0 等）
@@ -198,15 +262,15 @@
 
 ---
 
-## 3. 数据采集与去重机制
+## 4. 数据采集与去重机制
 
 ### 采集方式
 
-后端内置 **两种采集模式**，共享同一套 Cron 调度器和审核流程：
+后端内置 **两种采集模式**，共享同一套 APScheduler 调度器和审核流程：
 
 #### 模式一：GitHub Raw 直导入（推荐，已实现并稳定运行）
 
-后端 `github_import_service.ts` 直接从 GitHub 仓库的 `raw.githubusercontent.com` JSON 文件抓取数据。前端管理后台 → 采集管理 → 选采集源 → 点「导入」。
+后端 `github_import_service.py` 直接从 GitHub 仓库的 `raw.githubusercontent.com` JSON 文件抓取数据。前端管理后台 → 采集管理 → 选采集源 → 点「导入」。
 
 **特性**：
 - 自动 URL 拼接：`baseUrl` + `remark`（仓库路径），支持**中文目录自动 URL 编码**
@@ -215,10 +279,10 @@
 
 #### 模式二：定时自动采集
 
-后端启动时 `server.ts` → `cronScheduler.startAll()` 自动加载所有 `enabled=1` 的 `CrawlSchedule`，注册为 node-cron job，到点自动执行。
+后端启动时 `app/main.py` 的 `lifespan` → `cron_service.start()` 自动加载所有 `enabled=1` 的 `CrawlSchedule`，注册为 APScheduler CronTrigger job，到点自动执行。
 
 管理后台 → 采集管理 → ⏰ 定时采集 Tab：
-- 配置 Cron 表达式（5 段标准格式：`* * * * * *` 分 时 日 月 周）
+- 配置 Cron 表达式（5 段标准格式：`分 时 日 月 周`）
 - 启用/停用开关
 - 立即执行按钮（不等 Cron 到点）
 - 实时查看 `nextRunAt` / `lastRunAt` / 上次执行结果
@@ -252,6 +316,8 @@
                             入库（auditStatus=0）
 ```
 
+去重引擎位于 `server/app/utils/dedup.py`，crawler 子模块通过 `crawler/engine/deduper.py` 复用同一套实现（MD5 + 64 位 SimHash，中文 2-gram 分词）。
+
 ### 审核流程
 
 ```
@@ -273,9 +339,11 @@
   用户端可见 ✅
 ```
 
+`auditStatus` 字段（0=待审 1=通过 2=拒绝，`CrawlRecord` 还多了 3=重复）同时存在于 `Quote`、`OriginalText`、`CrawlRecord` 三张表。
+
 ---
 
-## 4. AI 金句提取
+## 5. AI 全功能矩阵
 
 ### 支持的 Provider
 
@@ -292,34 +360,9 @@
 | Moonshot (Kimi) | `https://api.moonshot.cn/v1` | moonshot-v1-8k / moonshot-v1-32k |
 | 自定义 | 手填 | 任意兼容 OpenAI 的模型 |
 
-### 使用流程
+### 4 大 AI 功能 + 一键批量处理
 
-1. 管理后台 → AI 金句提取管理 → **新建 AI 配置**
-2. 选择 Provider → Base URL 自动预填 → 选模型 → 填 API Key → 保存
-3. 到 **AI 金句提取** Tab：选原文 → 选 AI 配置 → 开始提取
-4. 提取结果自动经过 **SimHash 去重**，重复金句不入库
-5. 提取到的金句默认 `auditStatus=0`，到审核管理通过后对用户展示
-
-### HTTP 请求示例（以火山方舟为例）
-
-```bash
-curl https://ark.cn-beijing.volces.com/api/v3/chat/completions \
-  -H "Authorization: Bearer ${ARK_API_KEY}" \
-  -H "Content-Type: application/json" \
-  -d '{
-    "model": "doubao-1-5-pro",
-    "messages": [{"role": "user", "content": "从以下原文中提取 5 条有感染力的金句..."}],
-    "temperature": 0.7
-  }'
-```
-
-后端 `ai_client.ts` 统一构造这类请求，换 Provider 只需换 `baseUrl` 和 `apiKey`。
-
----
-
-## 4.1 AI 全功能矩阵
-
-拾句内置 **4 大 AI 功能 + 一键批量处理**，共享同一套 AI 配置（Provider / API Key / 模型 / 提示词模板 / 超时重试），在管理后台 → AI 智能功能管理 中统一管理。
+共享同一套 AI 配置（Provider / API Key / 模型 / 提示词模板 / 超时重试），在管理后台 → AI 智能功能管理 中统一管理。
 
 | 功能 | 说明 | 提示词占位符 | 模板字段 |
 |---|---|---|---|
@@ -327,6 +370,13 @@ curl https://ark.cn-beijing.volces.com/api/v3/chat/completions \
 | AI 拼音标注 | 逐字标注带声调拼音，返回 JSON 数组 | `{content}` | `pinyinPromptTemplate` |
 | AI 繁转简 | 繁体/异体字 → 标准简体中文 | `{content}` | `simplifyPromptTemplate` |
 | AI 自动分类 | 自动获取分类列表注入，AI 选择 1-5 个分类 | `{categories}` `{content}` | `classifyPromptTemplate` |
+
+| 一键功能 | 说明 |
+|---|---|
+| 一键生成缺失拼音 | 筛选所有 `pinyinData` 为空的金句 + 原文，串行调 AI 标注 |
+| 一键提取零金句原文 | 筛选 `quoteCount=0` 的原文，创建后台 AI 提取任务 |
+| 一键繁转简 | 筛选含繁体字的内容，使用**本地 OpenCC 映射**转换（零 API 成本） |
+| 一键自动分类 | 筛选无分类关联的金句 + 原文，串行调 AI 分类 |
 
 ### 分类体系
 
@@ -339,72 +389,77 @@ curl https://ark.cn-beijing.volces.com/api/v3/chat/completions \
 | 用途场景 | `scene` | 作文开头、作文结尾、过渡衔接、论点论据、抒情描写… |
 | 时代 | `era` | 先秦、汉魏、南北朝、唐代、宋代、元代、明代、清代、近现代、当代 |
 
-### AI 自动分类工作流
-
-```
-1. 获取所有启用的分类列表（ID | 分类名 | 维度 | 父分类）
-2. 注入提示词模板 {categories} 占位符
-3. AI 分析内容，从列表中选择 1-5 个最合适的分类
-4. 返回 JSON 数组 [1, 5, 12]
-5. 先删除旧关联 → 写入新关联（QuoteCategory / OriginalTextCategory）
-```
-
-### 一键批量处理
-
-管理后台 → 🚀 一键批量处理 Tab：
-
-| 一键功能 | 说明 |
-|---|---|
-| 一键生成缺失拼音 | 筛选所有 `pinyinData` 为空的金句 + 原文，串行调 AI 标注 |
-| 一键提取零金句原文 | 筛选 `quoteCount=0` 的原文，创建后台 AI 提取任务 |
-| 一键繁转简 | 筛选含繁体字的内容，使用**本地纯 JS 映射**转换（零 API 成本） |
-| 一键自动分类 | 筛选无分类关联的金句 + 原文，串行调 AI 分类 |
-
-### 本地繁简转换（无需 AI）
-
-`trad_to_simpl.ts` 内置 1000+ 常用繁简汉字映射，纯 JavaScript 查表替换：
-- **零 API 成本**：不调用任何大模型，速度极快
-- 一键繁转简默认使用此本地方案
-- 如需词级精准转换（如「發/髮→发」多义字），可后续集成 `opencc-js`
-
 ---
 
-## 5. 开发环境启动
+## 6. 开发环境启动
 
 ### 前置要求
 
 | 工具 | 版本要求 |
 |---|---|
-| Node.js | ≥ 18（推荐 20 LTS） |
-| npm | ≥ 9 |
-| Flutter | ≥ 3.0（仅构建 App 时需要） |
+| Python | ≥ 3.10（推荐 3.11+） |
+| Node.js | ≥ 18（推荐 20 LTS，仅 web 管理后台需要） |
+| Flutter | ≥ 3.0（仅构建移动端 App 时需要） |
 
-### 5.1 后端启动
+### 6.1 一键启动（推荐）
+
+项目根 `run.py` 同时拉起后端 + 爬虫，自动复用项目根 `.venv`：
+
+```bash
+# 首次：创建虚拟环境并安装依赖
+python -m venv .venv
+# Linux/macOS
+. .venv/bin/activate
+# Windows
+. .venv\Scripts\activate
+pip install -r server/requirements.txt -r crawler/requirements.txt
+
+# 一键启动（后端 + 爬虫）
+python run.py
+# 单独启动后端
+python run.py --no-crawler
+# 单独启动爬虫
+python run.py --no-server
+# 指定端口
+python run.py --port 3001
+# 爬虫只挂起不跑调度（调度交给 server 内建 cron，避免双跑）
+python run.py --crawler-no-schedule
+```
+
+### 6.2 后端单独启动
 
 ```bash
 cd server
+pip install -r requirements.txt
 
-npm install
-npx prisma generate
-npx prisma db push          # SQLite 自动创建 dev.db
+# 开发模式（自动重载）
+python run.py                    # → http://localhost:3000
 
-# （可选）写入种子数据：50+ 采集源、分类、系统配置
-npm run prisma:seed
-
-npm run dev                 # → http://localhost:3000
+# 或直接 uvicorn
+uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 ```
 
-**环境变量**（`server/.env`）：
+首次启动自动建表 + 创建默认管理员 `admin / admin123`（请尽快改密码）。
+
+**环境变量**（`server/.env`，未设置时自动回退到 SQLite）：
+
 ```env
 PORT=3000
 NODE_ENV=development
-DATABASE_URL="file:./dev.db"            # 开发 SQLite；生产换 PostgreSQL（推荐）/ MySQL
+DATABASE_URL=sqlite:///data/dev.db     # 生产换 postgresql://... 或 mysql://...
 JWT_SECRET="change_in_production"
 JWT_EXPIRES_IN=2h
-ADMIN_KEY="shiju_admin_key"              # 管理后台鉴权头：x-admin-key
+ADMIN_KEY="shiju_admin_key"             # 管理后台鉴权头：x-admin-key
 ```
 
-### 5.2 管理后台启动
+**灌入种子数据**（50+ 采集源、分类、系统配置）：
+
+```bash
+cd server
+python seed.py
+```
+
+### 6.3 管理后台启动
 
 ```bash
 cd web
@@ -416,7 +471,7 @@ Vite 自动将 `/api/*` 代理到 `http://localhost:3000`。
 
 登录后台：`http://localhost:5173/admin/login`，Admin Key 为 `server/.env` 中的 `ADMIN_KEY`。
 
-### 5.3 移动端启动（Flutter）
+### 6.4 移动端启动（Flutter）
 
 ```bash
 cd app
@@ -425,33 +480,38 @@ flutter pub get
 flutter run
 ```
 
-### 5.4 采集器独立模块（可选）
+### 6.5 采集器独立模块（可选）
 
-后端内置的 `github_import_service.ts` 已覆盖 GitHub Raw 直导入场景。如果需要采集古诗文网等 HTML 网站，可启动独立的 `crawler/` 模块：
+后端内置的 `github_import_service.py` 已覆盖 GitHub Raw 直导入场景。如果需要采集古诗文网等 HTML 网站，可启动独立的 `crawler/` 模块：
 
 ```bash
 cd crawler
-npm install
-npm run dev                               # 定时调度运行
-npm run crawl:run                         # 执行一次
+pip install -r requirements.txt
+
+python -m crawler.index --list                          # 列出可用 Provider
+python -m crawler.index --run guwenwen --pages 3         # 立即采集某源
+python -m crawler.index                                  # 守护模式（APScheduler）
 ```
+
+详细用法见 [crawler/README.md](crawler/README.md)。
 
 ---
 
-## 6. 生产环境部署
+## 7. 生产环境部署
 
-### 6.1 后端
+### 7.1 后端
 
 ```bash
 cd server
-# 修改 .env 为生产配置
-npm run build                 # → dist/
-npx prisma migrate deploy
-npm run start                 # node dist/server.js
-# 推荐 PM2：pm2 start dist/server.js --name shiju-server
+pip install -r requirements.txt
+# 修改 .env 为生产配置（推荐 PostgreSQL）
+NODE_ENV=production python run.py --no-reload --port 3000
+
+# 多 worker（推荐）
+uvicorn app.main:app --host 0.0.0.0 --port 3000 --workers 4
 ```
 
-### 6.2 管理后台
+### 7.2 管理后台
 
 ```bash
 cd web
@@ -459,23 +519,11 @@ npm run build                 # → dist/（纯静态）
 # Nginx 托管 + /api 反代到后端
 ```
 
-### 6.3 Docker 一键部署（推荐）
+### 7.3 Docker 一键部署
 
-项目内置完整的 Docker 多阶段构建文件，支持一键部署。
+项目内置 `docker-compose.yml`，编排 PostgreSQL + 后端 + 管理后台三个服务。
 
-#### 文件说明
-
-| 文件 | 说明 |
-|---|---|
-| `docker-compose.yml` | 编排文件，定义后端 + 前端两个服务 |
-| `server/Dockerfile` | 后端多阶段构建：编译 TS + 生成 Prisma → 精简运行 |
-| `web/Dockerfile` | 前端多阶段构建：Vite 编译 → Nginx 托管 |
-| `web/nginx.conf` | Nginx 配置：静态资源 + `/api/*` 反代后端 |
-| `.env.example` | 环境变量示例文件 |
-| `server/.dockerignore` | 后端构建排除（node_modules / dist / .env / dev.db） |
-| `web/.dockerignore` | 前端构建排除（node_modules / dist / .env） |
-
-#### 快速启动
+> ⚠️ **注意**：`server/` 目录目前没有 Dockerfile（Python 版尚未提供）。docker-compose 中 `shiju-server` 的 `build: ./server` 需要你自行补一个基于 `python:3.11-slim` 的 Dockerfile，或改用预构建镜像。`web/` 的 Dockerfile 完整可用。
 
 ```bash
 # 1. 复制环境变量文件并修改
@@ -485,7 +533,7 @@ cp .env.example .env
 # 2. 一键构建并启动
 docker compose up -d --build
 
-# 3. 查看日志（可选）
+# 3. 查看日志
 docker compose logs -f shiju-server
 
 # 4. 停止
@@ -496,84 +544,68 @@ docker compose down
 
 | 服务 | 地址 | 说明 |
 |---|---|---|
-| 后端 API | `http://localhost:3000` | Express + Prisma |
+| 后端 API | `http://localhost:3000` | FastAPI + SQLAlchemy |
 | 管理后台 | `http://localhost:8080/admin/login` | Nginx + React 静态 |
 | 健康检查 | `http://localhost:3000/api/health` | API 存活探测 |
 
 #### 数据持久化
 
-- SQLite 模式（默认）：数据库文件挂载到 `./server/data/` 目录，容器重建后数据不丢
-- PostgreSQL 模式（生产推荐）：在 `.env` 设置 `DATABASE_URL` + `PRISMA_SCHEMA=prisma/schema.postgres.prisma`，取消注释 `docker-compose.yml` 中 postgres 服务块
-- MySQL 模式：取消注释 `docker-compose.yml` 中的 MySQL 配置，修改 `DATABASE_URL` 为 `mysql://...`
-
-#### Docker 架构图
-
-```
-┌─────────────────────────────────────────────────────┐
-│  docker-compose                                     │
-│                                                     │
-│  ┌─────────────────────────────────────────────┐   │
-│  │  shiju-web (Nginx)                          │   │
-│  │  端口: 8080 → 80                            │   │
-│  │  静态资源: /usr/share/nginx/html            │   │
-│  │  /api/* → proxy_pass → shiju-server:3000    │   │
-│  └──────────────────┬──────────────────────────┘   │
-│                      │ depends_on (healthy)         │
-│  ┌──────────────────▼──────────────────────────┐   │
-│  │  shiju-server (Node.js 20)                  │   │
-│  │  端口: 3000                                 │   │
-│  │  启动: prisma db push → node dist/server.js │   │
-│  │  数据: ./server/data/ → /app/data           │   │
-│  └─────────────────────────────────────────────┘   │
-└─────────────────────────────────────────────────────┘
-```
-
-#### 使用 MySQL（可选）
-
-```yaml
-# 取消 docker-compose.yml 中 mysql 服务的注释
-# 修改 shiju-server 环境变量:
-#   DATABASE_URL: "mysql://shiju:shiju_pass_2024@mysql:3306/shiju"
-# 启动:
-docker compose up -d --build
-```
-
-#### 使用 PostgreSQL（生产推荐）
-
-项目内置 PostgreSQL 版本的 Prisma schema（`server/prisma/schema.postgres.prisma`），通过环境变量一键切换，无需手动改 schema 文件。
-
-```yaml
-# 1. 在 .env 设置：
-#    DATABASE_URL="postgresql://shiju:shiju_pass_2024@postgres:5432/shiju?schema=public"
-#    PRISMA_SCHEMA="prisma/schema.postgres.prisma"
-#    POSTGRES_USER=shiju
-#    POSTGRES_PASSWORD=shiju_pass_2024
-#    POSTGRES_DB=shiju
-# 2. 取消 docker-compose.yml 中 postgres 服务块注释
-# 3. 在 shiju-server 取消 depends_on: postgres 注释
-# 4. 启动（首次自动 prisma db push 建表）：
-docker compose up -d --build
-```
-
-本地开发切换到 PostgreSQL：
-
-```bash
-cd server
-# .env 的 DATABASE_URL 改为 postgresql://...
-npm run prisma:generate:pg   # 用 PG 版 schema 生成 Prisma Client
-npm run prisma:push:pg      # 推送 schema 到 PG 建表
-npm run prisma:seed:pg      # 灌入种子数据
-npm run dev
-# 切回 SQLite：npm run prisma:generate && npm run prisma:push
-```
+- SQLite 模式（默认）：数据库文件保存在 `server/data/dev.db`
+- PostgreSQL 模式（生产推荐）：在 `.env` 设置 `DATABASE_URL=postgresql://...`，使用 docker-compose 内置的 postgres 服务
+- MySQL 模式：在 `.env` 设置 `DATABASE_URL=mysql://...`，取消注释 `docker-compose.yml` 中的 MySQL 配置块
 
 ---
 
-## 附：端口与健康检查
+## 8. 关键 API 接口
+
+所有管理后台接口共用 `x-admin-key` 请求头鉴权（`ADMIN_KEY` 环境变量）。响应统一 `{ code, message, data }` 结构。
+
+### 采集管理
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/v1/admin/crawl/sources` | 列出全部采集源 |
+| POST | `/api/v1/admin/crawl/sources` | 新增采集源 |
+| PUT | `/api/v1/admin/crawl/sources/:id` | 更新采集源 |
+| DELETE | `/api/v1/admin/crawl/sources/:id` | 删除采集源 |
+| GET | `/api/v1/admin/crawl/tasks` | 列出采集任务 |
+| GET | `/api/v1/admin/crawl/source-stats` | 采集源统计 |
+| POST | `/api/v1/admin/crawl/import` | 手动触发 GitHub Raw 直导入（异步执行）|
+| GET | `/api/v1/admin/crawl/tasks/:id` | 查看任务状态 |
+
+### 定时采集调度
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/v1/admin/crawl/schedule` | 列出全部调度 |
+| POST | `/api/v1/admin/crawl/schedule/upsert` | 创建/更新（sourceId + cronExpr + enabled）|
+| POST | `/api/v1/admin/crawl/schedule/:id/start` | 启用（Cron 注册）|
+| POST | `/api/v1/admin/crawl/schedule/:id/stop` | 停用（Cron 注销）|
+| POST | `/api/v1/admin/crawl/schedule/:id/run` | 立即执行一次 |
+
+### 审核管理
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/v1/admin/audit/list?entity=original&status=0` | 审核队列列表 |
+| POST | `/api/v1/admin/audit/batch` | 批量审核（`{entity, ids, targetStatus}`）|
+
+### AI 金句提取
+
+| 方法 | 路径 | 说明 |
+|---|---|---|
+| GET | `/api/v1/admin/ai/configs` | 列出 AI 配置 |
+| POST | `/api/v1/admin/ai/configs` | 新建 AI 配置 |
+| POST | `/api/v1/admin/ai/extract` | 创建提取任务 |
+| GET | `/api/v1/admin/ai/tasks/:id` | 任务状态（轮询进度）|
+
+---
+
+## 9. 端口与健康检查
 
 | 端口 | 服务 |
 |---|---|
-| 3000 | 后端 API（Express）|
+| 3000 | 后端 API（FastAPI / uvicorn）|
 | 5173 | 管理后台开发服务器（Vite dev）|
 | 8080 | 管理后台生产容器内端口（Nginx）|
 | 3306 | MySQL（docker-compose 内部，可选）|
@@ -584,43 +616,30 @@ curl http://localhost:3000/api/health
 # {"code":0,"data":{"status":"ok","uptime":1234,"version":"1.0.0"}}
 ```
 
-## 附：数据库切换（SQLite / PostgreSQL / MySQL）
+---
 
-项目通过「双 schema 文件 + 环境变量」支持三种数据库，无需手动改 schema：
+## 10. 数据库切换（SQLite / PostgreSQL / MySQL）
 
-| 数据库 | schema 文件 | provider | 适用场景 |
-|---|---|---|---|
-| SQLite（默认） | `prisma/schema.prisma` | `sqlite` | 开发轻量、单机部署 |
-| PostgreSQL（推荐） | `prisma/schema.postgres.prisma` | `postgresql` | 生产、高并发、事务强 |
-| MySQL | 需手动改 provider | `mysql` | 生产、已有 MySQL 环境 |
+通过 `DATABASE_URL` 环境变量切换，SQLAlchemy 自动适配：
 
-> 说明：Prisma 的 `datasource.provider` 不支持环境变量动态切换，因此采用两份 schema 文件，通过 `PRISMA_SCHEMA` 环境变量或 `--schema` 参数选择。代码层已移除全部 `$queryRaw`（改用 Prisma 标准查询），保证三种数据库下行为一致。
+| 数据库 | `DATABASE_URL` 示例 | 适用场景 |
+|---|---|---|
+| SQLite（默认） | `sqlite:///data/dev.db` | 开发轻量、单机部署 |
+| PostgreSQL（推荐） | `postgresql://user:pass@host:5432/shiju` | 生产、高并发、事务强 |
+| MySQL | `mysql://user:pass@host:3306/shiju` | 生产、已有 MySQL 环境 |
 
-**SQLite → PostgreSQL**：
+> 说明：SQLAlchemy 模型的表名/列名与原 Prisma schema 保持一致（如 `contentMd5`、`auditStatus`、`createdAt`），三种数据库下行为一致。
 
-```bash
-cd server
-# .env 的 DATABASE_URL 改为 postgresql://...
-npm run prisma:generate:pg   # 生成 PG 版 Prisma Client
-npm run prisma:push:pg       # 建表
-npm run prisma:seed:pg       # 种子数据
-npm run dev
-```
+---
 
-**SQLite → MySQL**：
+## 11. 已知技术限制
 
-修改 `server/prisma/schema.prisma`：
-```prisma
-datasource db {
-  provider = "mysql"
-  url      = env("DATABASE_URL")
-}
-```
-
-然后：
-```bash
-cd server
-# .env 的 DATABASE_URL 改为 mysql://...
-npx prisma migrate dev --name switch_to_mysql
-npm run dev
-```
+| 项目 | 现状 | 未来改进 |
+|---|---|---|
+| SQLite 开发环境 | 单文件轻量，适合 MVP | 生产切换 PostgreSQL，提升并发 |
+| 去重 SimHash | 自建实现，64 位 | 可考虑接入 VPTree 索引加速大规模比对 |
+| 采集源 GitHub Raw 为主 | 覆盖古诗词/名言/台词等主要品类 | 后续可接入更多公开 JSON 数据源 |
+| 审核流程 | 人工批量审核 | 可考虑接入 AI 辅助审核 |
+| 独立 crawler/ 子模块 | 已实现但后端内置 github_import_service 已覆盖主要场景 | 如需抓古诗文网等 HTML 动态页再启用 |
+| Redis | 未引入 | 可用于缓存每日推荐、热门搜索词、采集速率限制 |
+| Docker | web 完整可用，server 需补 Dockerfile | 为 Python server 补 Dockerfile 后即可一键 docker compose |
