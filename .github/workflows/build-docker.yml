@@ -1,8 +1,8 @@
 # 拾句 Docker 镜像构建工作流
-# 触发：push tag v*、push 到 main 改动 server/web/docker-compose/.env.example、手动触发
+# 触发：手动 Run workflow（不在 push/commit 时自动触发）
 # 产出：
 #   - Docker 镜像 push 到 GHCR（ghcr.io/<owner>/shiju-server / shiju-web）
-#   - 构建产物 tar 上传到 Artifacts（便于无 GHCR 权限场景下载）
+#   - 镜像 tag：latest + sha-xxx
 #
 # 前置：
 #   1. 仓库 Settings → Actions → General → Workflow permissions 勾选 "Read and write permissions"
@@ -15,17 +15,6 @@
 name: Build Docker
 
 on:
-  push:
-    tags:
-      - 'v*'
-    branches:
-      - main
-    paths:
-      - 'server/**'
-      - 'web/**'
-      - 'docker-compose.yml'
-      - '.env.example'
-      - '.github/workflows/build-docker.yml'
   workflow_dispatch:
 
 env:
@@ -65,8 +54,7 @@ jobs:
             ${{ env.SERVER_IMAGE }}
             ${{ env.WEB_IMAGE }}
           tags: |
-            type=ref,event=tag               # v1.0.0
-            type=raw,value=latest,enable={{is_default_branch}}
+            type=raw,value=latest             # latest
             type=sha,format=short             # sha-abc1234
 
       # ============ 构建后端镜像 ============

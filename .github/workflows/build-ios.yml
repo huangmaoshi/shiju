@@ -1,5 +1,5 @@
 # 拾句 iOS App 构建工作流
-# 触发：push tag v* 或手动 Run workflow
+# 触发：手动 Run workflow（不在 push/commit 时自动触发）
 # 产出：Runner.app / .xcarchive（上传到 Artifacts）
 #
 # 需要 Apple Developer 账号，在 GitHub Secrets 配置：
@@ -14,12 +14,6 @@
 name: Build iOS
 
 on:
-  push:
-    tags:
-      - 'v*'
-    paths:
-      - 'app/**'
-      - '.github/workflows/build-ios.yml'
   workflow_dispatch:
 
 jobs:
