@@ -35,3 +35,8 @@ if not config.database_url:
     data_dir = os.path.join(os.path.dirname(os.path.dirname(os.path.abspath(__file__))), "data")
     os.makedirs(data_dir, exist_ok=True)
     config.database_url = f"sqlite:///{os.path.join(data_dir, 'dev.db')}"
+else:
+    # 兼容 Prisma 风格连接串：SQLAlchemy 不认 ?schema=public 等参数，自动剥离
+    # 例如 postgresql://user:pass@host:5432/db?schema=public → .../db
+    if "?" in config.database_url:
+        config.database_url = config.database_url.split("?", 1)[0]
