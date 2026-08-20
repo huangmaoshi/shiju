@@ -1,5 +1,10 @@
 class ApiConfig {
-  static const String baseUrl = 'http://localhost:3000/api/v1';
+  // 支持构建时注入：flutter build apk --dart-define=API_BASE_URL=https://api.example.com/api/v1
+  // 未注入时默认本地开发地址
+  static const String baseUrl = String.fromEnvironment(
+    'API_BASE_URL',
+    defaultValue: 'http://localhost:3000/api/v1',
+  );
   static const int connectTimeout = 15000;
   static const int receiveTimeout = 15000;
   static const int sendTimeout = 15000;
