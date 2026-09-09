@@ -132,6 +132,31 @@ function QuoteAuditPanel() {
     setModal({ open: true, status });
   };
 
+  const doQuickAudit = async (status: number) => {
+    if (list.length === 0) {
+      message.warning("当前页没有可审核的数据");
+      return;
+    }
+
+    Modal.confirm({
+      title: status === 1 ? "确认一键通过当前页" : "确认一键拒绝当前页",
+      icon: status === 1 ? <CheckCircleOutlined /> : <ExclamationCircleOutlined style={{ color: "red" }} />,
+      content: `将当前页 ${list.length} 条金句${status === 1 ? "全部通过" : "全部拒绝"}吗？`,
+      okText: "确认",
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          await adminApi.auditQuotes(list.map((item) => item.id), status);
+          message.success(`已${status === 1 ? "通过" : "拒绝"}当前页 ${list.length} 条`);
+          setSelectedIds([]);
+          load();
+        } catch (e: any) {
+          message.error(e?.message || "操作失败");
+        }
+      },
+    });
+  };
+
   const doAudit = async (reason?: string) => {
     try {
       await adminApi.auditQuotes(selectedIds, modal.status, reason);
@@ -224,6 +249,26 @@ function QuoteAuditPanel() {
       }
       extra={
         <Space>
+          {list.length > 0 && (
+            <>
+              <Button
+                size="small"
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={() => doQuickAudit(1)}
+              >
+                一键通过当前页
+              </Button>
+              <Button
+                size="small"
+                danger
+                icon={<CloseCircleOutlined />}
+                onClick={() => doQuickAudit(2)}
+              >
+                一键拒绝当前页
+              </Button>
+            </>
+          )}
           {selectedIds.length > 0 && (
             <>
               <span style={{ color: "#1890ff" }}>已选 {selectedIds.length} 条</span>
@@ -321,6 +366,31 @@ function OriginalAuditPanel() {
       return;
     }
     setModal({ open: true, status });
+  };
+
+  const doQuickAudit = async (status: number) => {
+    if (list.length === 0) {
+      message.warning("当前页没有可审核的数据");
+      return;
+    }
+
+    Modal.confirm({
+      title: status === 1 ? "确认一键通过当前页" : "确认一键拒绝当前页",
+      icon: status === 1 ? <CheckCircleOutlined /> : <ExclamationCircleOutlined style={{ color: "red" }} />,
+      content: `将当前页 ${list.length} 条原文${status === 1 ? "全部通过" : "全部拒绝"}吗？`,
+      okText: "确认",
+      cancelText: "取消",
+      onOk: async () => {
+        try {
+          await adminApi.auditOriginalTexts(list.map((item) => item.id), status);
+          message.success(`已${status === 1 ? "通过" : "拒绝"}当前页 ${list.length} 条`);
+          setSelectedIds([]);
+          load();
+        } catch (e: any) {
+          message.error(e?.message || "操作失败");
+        }
+      },
+    });
   };
 
   const doAudit = async (reason?: string) => {
@@ -427,6 +497,26 @@ function OriginalAuditPanel() {
       }
       extra={
         <Space>
+          {list.length > 0 && (
+            <>
+              <Button
+                size="small"
+                type="primary"
+                icon={<CheckCircleOutlined />}
+                onClick={() => doQuickAudit(1)}
+              >
+                一键通过当前页
+              </Button>
+              <Button
+                size="small"
+                danger
+                icon={<CloseCircleOutlined />}
+                onClick={() => doQuickAudit(2)}
+              >
+                一键拒绝当前页
+              </Button>
+            </>
+          )}
           {selectedIds.length > 0 && (
             <>
               <span style={{ color: "#1890ff" }}>已选 {selectedIds.length} 条</span>
