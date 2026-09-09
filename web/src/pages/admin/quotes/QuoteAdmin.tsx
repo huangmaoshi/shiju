@@ -11,6 +11,7 @@ export default function QuoteAdmin() {
   const [list, setList] = useState<Quote[]>([]);
   const [total, setTotal] = useState(0);
   const [page, setPage] = useState(1);
+  const [pageSize, setPageSize] = useState(15);
   const [keyword, setKeyword] = useState("");
   const [categories, setCategories] = useState<Category[]>([]);
   const [editing, setEditing] = useState<Quote | null>(null);
@@ -26,10 +27,10 @@ export default function QuoteAdmin() {
   const [showPinyin, setShowPinyin] = useState(true);
 
   const load = () => {
-    quoteApi.list({ page, pageSize: 15, keyword }).then((r) => { setList(r.list); setTotal(r.total); });
+    quoteApi.list({ page, pageSize, keyword }).then((r) => { setList(r.list); setTotal(r.total); });
   };
 
-  useEffect(() => { load(); categoryApi.list().then(setCategories); }, [page, keyword]);
+  useEffect(() => { load(); categoryApi.list().then(setCategories); }, [page, pageSize, keyword]);
 
   const openEdit = (q?: Quote) => {
     setEditing(q || null);
@@ -151,9 +152,13 @@ export default function QuoteAdmin() {
           rowSelection={{ selectedRowKeys, onChange: (k) => setSelectedRowKeys(k as number[]) }}
           scroll={{ x: 1200 }}
           pagination={{
-            current: page, pageSize: 15, total,
+            current: page, pageSize, total,
             showSizeChanger: true, showTotal: (t) => `共 ${t} 条`,
             onChange: (p) => setPage(p),
+            onShowSizeChange: (_current, size) => {
+              setPageSize(size);
+              setPage(1);
+            },
           }}
         />
       </Card>

@@ -116,7 +116,7 @@ def list(db: Session, params: dict | None = None) -> dict:
     total = query.count()
     records = (
         query
-        .order_by(OriginalText.id.desc())
+        .order_by(OriginalText.id.asc())
         .offset(skip)
         .limit(page_size)
         .all()

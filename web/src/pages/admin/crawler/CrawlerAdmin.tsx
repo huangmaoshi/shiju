@@ -381,6 +381,8 @@ export default function CrawlerAdmin() {
   const [sources, setSources] = useState<any[]>([]);
   const [stats, setStats] = useState<any>(null);
   const [tasks, setTasks] = useState<any[]>([]);
+  const [sourcePageSize, setSourcePageSize] = useState(15);
+  const [taskPageSize, setTaskPageSize] = useState(15);
   const [loading, setLoading] = useState(false);
 
   const loadAll = async () => {
@@ -460,6 +462,27 @@ export default function CrawlerAdmin() {
     { title: "ID", dataIndex: "id", width: 60 },
     { title: "名称", dataIndex: "name", width: 220, render: (v: string) => <strong>{v}</strong> },
     { title: "Code", dataIndex: "code", width: 180, render: (v: string) => <code style={{ fontSize: 12 }}>{v}</code> },
+    {
+      title: "完整源 URL",
+      dataIndex: "baseUrl",
+      width: 260,
+      render: (v: string) => (
+        <Text
+          copyable={v ? { text: v } : false}
+          style={{
+            display: "inline-block",
+            maxWidth: 240,
+            overflow: "hidden",
+            textOverflow: "ellipsis",
+            whiteSpace: "nowrap",
+            verticalAlign: "middle",
+          }}
+          title={v || undefined}
+        >
+          {v || "-"}
+        </Text>
+      ),
+    },
     { title: "类型", dataIndex: "type", width: 110, render: getTypeTag },
     { title: "数据集", dataIndex: "datasetType", width: 90, render: (v: string) => DATASET_TYPE_LABELS[v] || v || "-" },
     { title: "合规标签", dataIndex: "complianceTag", width: 110, render: getComplianceTag },
@@ -497,6 +520,12 @@ export default function CrawlerAdmin() {
                 <div>
                   <Text type="secondary">类型：</Text>{getTypeTag(src.type)}
                   <Text type="secondary" style={{ marginLeft: 8 }}>数据集：</Text>{DATASET_TYPE_LABELS[src.datasetType] || src.datasetType}
+                </div>
+                <div>
+                  <Text type="secondary">完整源 URL：</Text>
+                  <Text copyable={src.baseUrl ? { text: src.baseUrl } : false} style={{ wordBreak: "break-all" }}>
+                    {src.baseUrl || "-"}
+                  </Text>
                 </div>
                 <div>
                   <Text type="secondary">协议：</Text><Tag color="green">{src.protocol || "PD"}</Tag>
@@ -558,7 +587,12 @@ export default function CrawlerAdmin() {
                   size="small"
                   scroll={{ x: 1500 }}
                   loading={loading}
-                  pagination={{ pageSize: 15, showTotal: (t) => `共 ${t} 个采集源` }}
+                  pagination={{
+                    pageSize: sourcePageSize,
+                    showSizeChanger: true,
+                    showTotal: (t) => `共 ${t} 个采集源`,
+                    onShowSizeChange: (_current, size) => setSourcePageSize(size),
+                  }}
                 />
               </Card>
             ),
@@ -580,7 +614,19 @@ export default function CrawlerAdmin() {
             label: `采集任务日志（${tasks.length}）`,
             children: (
               <Card size="small" extra={<Button icon={<ReloadOutlined />} onClick={loadAll}>刷新</Button>}>
-                <Table columns={taskColumns} dataSource={tasks} rowKey="id" size="small" loading={loading} pagination={{ pageSize: 15 }} />
+                <Table
+                  columns={taskColumns}
+                  dataSource={tasks}
+                  rowKey="id"
+                  size="small"
+                  loading={loading}
+                  pagination={{
+                    pageSize: taskPageSize,
+                    showSizeChanger: true,
+                    showTotal: (t) => `共 ${t} 条采集任务`,
+                    onShowSizeChange: (_current, size) => setTaskPageSize(size),
+                  }}
+                />
               </Card>
             ),
           },

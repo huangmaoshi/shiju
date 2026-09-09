@@ -237,7 +237,7 @@ async def quote_list(
         query = query.filter(*conditions)
     total = query.count()
     quotes = (
-        query.order_by(Quote.createdAt.desc()).offset(skip).limit(take).all()
+        query.order_by(Quote.id.asc()).offset(skip).limit(take).all()
     )
 
     quote_ids = [q.id for q in quotes]
@@ -1506,7 +1506,7 @@ async def original_text_admin_list(
         query = query.filter(*conditions)
     total = query.count()
     records = (
-        query.order_by(OriginalText.createdAt.desc()).offset(skip).limit(take).all()
+        query.order_by(OriginalText.id.asc()).offset(skip).limit(take).all()
     )
 
     ot_ids = [r.id for r in records]

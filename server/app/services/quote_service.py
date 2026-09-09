@@ -82,7 +82,7 @@ def list(db: Session, userId=None, params: dict | None = None) -> dict:
     total = query.count()
     quotes = (
         query
-        .order_by(Quote.id.desc())
+        .order_by(Quote.id.asc())
         .offset(skip)
         .limit(page_size)
         .all()
