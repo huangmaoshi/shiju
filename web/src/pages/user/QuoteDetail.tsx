@@ -15,6 +15,8 @@ import {
   Modal,
   Select,
   Input,
+  Slider,
+  Checkbox,
 } from "antd";
 import { StarOutlined, DownloadOutlined, CopyOutlined, FolderOpenOutlined } from "@ant-design/icons";
 import { adminApi, collectionApi } from "@/api";
@@ -42,22 +44,34 @@ const EXPORT_WIDTH = 1080;
 const EXPORT_HEIGHT = 1600;
 const PREVIEW_WIDTH = 360;
 const PREVIEW_HEIGHT = 520;
-const PREVIEW_SCALE = PREVIEW_WIDTH / EXPORT_WIDTH;
+const PREVIEW_SCALE = Math.min(PREVIEW_WIDTH / EXPORT_WIDTH, PREVIEW_HEIGHT / EXPORT_HEIGHT);
+const PREVIEW_OFFSET_X = Math.round((PREVIEW_WIDTH - EXPORT_WIDTH * PREVIEW_SCALE) / 2);
+const PREVIEW_OFFSET_Y = Math.round((PREVIEW_HEIGHT - EXPORT_HEIGHT * PREVIEW_SCALE) / 2);
 
-const defaultExportSettings = (template?: any) => ({
-  bgType: template?.bgType || "color",
-  bgValue: template?.bgValue || "#ffffff",
-  fontFamily: template?.fontFamily || "PingFang SC",
-  fontSize: template?.fontSize || 32,
-  fontColor: template?.fontColor || "#1f2937",
-  lineHeight: template?.lineHeight || 1.8,
-  textAlign: template?.textAlign || "center",
-  textX: template?.textX ?? 40,
-  textY: template?.textY ?? 210,
-  textWidth: template?.textWidth ?? DEFAULT_TEXT_WIDTH,
-  showAuthor: template?.showAuthor !== 0,
-  showWatermark: template?.showWatermark !== 0,
-});
+const defaultExportSettings = (template?: any) => {
+  const fontSize = template?.fontSize || 32;
+  const textY = template?.textY ?? 210;
+  const textHeight = template?.textHeight ?? 260;
+
+  return {
+    bgType: template?.bgType || "color",
+    bgValue: template?.bgValue || "#ffffff",
+    fontFamily: template?.fontFamily || "PingFang SC",
+    fontSize,
+    fontColor: template?.fontColor || "#1f2937",
+    lineHeight: template?.lineHeight || 1.8,
+    textAlign: template?.textAlign || "center",
+    textX: template?.textX ?? 40,
+    textY,
+    textWidth: template?.textWidth ?? DEFAULT_TEXT_WIDTH,
+    textHeight,
+    authorX: template?.authorX ?? template?.textX ?? 40,
+    authorY: template?.authorY ?? Math.min(1600 - 120, textY + textHeight + 18),
+    authorFontSize: template?.authorFontSize ?? Math.max(18, Math.round(fontSize * 0.75)),
+    showAuthor: template?.showAuthor !== 0,
+    showWatermark: template?.showWatermark !== 0,
+  };
+};
 
 export default function QuoteDetail() {
   const { id } = useParams();
@@ -73,11 +87,38 @@ export default function QuoteDetail() {
   const [exportTemplateId, setExportTemplateId] = useState<number | null>(null);
   const [exportSettings, setExportSettings] = useState<any>(defaultExportSettings());
   const [exportLoading, setExportLoading] = useState(false);
+  const [editorLocked, setEditorLocked] = useState(false);
   const previewContainerRef = useRef<HTMLDivElement | null>(null);
-  const dragStateRef = useRef<{ active: boolean; offsetX: number; offsetY: number }>({
+  const textBoxRef = useRef<HTMLDivElement | null>(null);
+  const textResizeRef = useRef<{
+    active: boolean;
+    mode: "corner" | "width";
+    startX: number;
+    startY: number;
+    startTextWidth: number;
+    startTextHeight: number;
+  }>({
+    active: false,
+    mode: "corner",
+    startX: 0,
+    startY: 0,
+    startTextWidth: DEFAULT_TEXT_WIDTH,
+    startTextHeight: 260,
+  });
+  const textDragRef = useRef<{ active: boolean; offsetX: number; offsetY: number }>({
     active: false,
     offsetX: 0,
     offsetY: 0,
+  });
+  const authorDragRef = useRef<{ active: boolean; offsetX: number; offsetY: number }>({
+    active: false,
+    offsetX: 0,
+    offsetY: 0,
+  });
+  const authorResizeRef = useRef<{ active: boolean; startY: number; startAuthorFontSize: number }>({
+    active: false,
+    startY: 0,
+    startAuthorFontSize: 24,
   });
 
   useEffect(() => {
@@ -209,21 +250,63 @@ export default function QuoteDetail() {
         return;
       }
 
-      const words = paragraph.split(/(\s+)/).filter((word) => word.length > 0);
+      const tokens = paragraph.split(/(\s+)/).filter((token) => token.length > 0);
       let line = "";
 
-      words.forEach((word) => {
-        const test = line + word;
-        if (ctx.measureText(test).width <= maxWidth || line.length === 0) {
-          line = test;
-        } else {
-          lines.push(line.trimEnd());
+      const pushLine = (value: string) => {
+        const trimmed = value.trimEnd();
+        if (trimmed) {
+          lines.push(trimmed);
+        }
+      };
+
+      tokens.forEach((token) => {
+        if (/^\s+$/.test(token)) {
+          if (line) {
+            line += token;
+          }
+          return;
+        }
+
+        const tokenWidth = ctx.measureText(token).width;
+
+        if (tokenWidth <= maxWidth) {
+          const candidate = line + token;
+          if (ctx.measureText(candidate).width <= maxWidth || !line) {
+            line = candidate;
+            return;
+          }
+        }
+
+        if (line) {
+          pushLine(line);
+          line = "";
+        }
+
+        if (tokenWidth <= maxWidth) {
+          line = token;
+          return;
+        }
+
+        let word = "";
+        Array.from(token).forEach((char) => {
+          const candidate = word + char;
+          if (ctx.measureText(candidate).width <= maxWidth || !word) {
+            word = candidate;
+            return;
+          }
+
+          pushLine(word);
+          word = char;
+        });
+
+        if (word) {
           line = word;
         }
       });
 
       if (line) {
-        lines.push(line.trimEnd());
+        pushLine(line);
       }
     });
 
@@ -277,7 +360,11 @@ export default function QuoteDetail() {
     const textX = Number(settings.textX ?? 40);
     const textY = Number(settings.textY ?? 210);
     const textWidth = Number(settings.textWidth ?? DEFAULT_TEXT_WIDTH);
+    const textHeight = Number(settings.textHeight ?? 260);
     const maxWidth = Math.max(120, Math.min(textWidth, canvas.width - textX * 2));
+    const authorX = Number(settings.authorX ?? textX);
+    const authorY = Number(settings.authorY ?? Math.min(canvas.height - 120, textY + textHeight + 18));
+    const authorFontSize = Number(settings.authorFontSize ?? Math.max(18, Math.round((settings.fontSize || 32) * 0.75)));
 
     ctx.textBaseline = "top";
     ctx.fillStyle = settings.fontColor || "#1f2937";
@@ -285,23 +372,24 @@ export default function QuoteDetail() {
 
     const lines = buildTextLines(quote.content || "", settings);
     const lineHeight = (settings.fontSize || 32) * (settings.lineHeight || 1.8);
+    const maxVisibleLines = Math.max(1, Math.floor(textHeight / lineHeight));
+    const visibleLines = lines.slice(0, maxVisibleLines);
 
     const align = settings.textAlign === "left" ? "left" : settings.textAlign === "right" ? "right" : "center";
 
-    lines.forEach((line, index) => {
+    visibleLines.forEach((line, index) => {
       const y = textY + index * lineHeight;
       const x = align === "left" ? textX : align === "right" ? textX + maxWidth : textX + maxWidth / 2;
       ctx.textAlign = align;
       ctx.fillText(line, x, y);
     });
 
-    const contentBottom = textY + lines.length * lineHeight + 80;
     if (settings.showAuthor) {
-      ctx.font = `500 28px ${settings.fontFamily || "PingFang SC"}`;
+      ctx.font = `500 ${authorFontSize}px ${settings.fontFamily || "PingFang SC"}`;
       ctx.fillStyle = "rgba(31, 41, 55, 0.85)";
-      ctx.textAlign = align;
+      ctx.textAlign = "left";
       const authorText = `—— ${quote.author || "佚名"}${quote.source ? ` 《${quote.source}》` : ""}`;
-      ctx.fillText(authorText, align === "left" ? textX : align === "right" ? textX + maxWidth : textX + maxWidth / 2, contentBottom);
+      ctx.fillText(authorText, authorX, authorY);
     }
 
     if (settings.showWatermark) {
@@ -335,35 +423,189 @@ export default function QuoteDetail() {
     }
   };
 
-  const startDrag = (event: React.PointerEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    event.currentTarget.setPointerCapture?.(event.pointerId);
-    const currentPreviewX = Math.round((exportSettings.textX ?? 40) * PREVIEW_SCALE);
-    const currentPreviewY = Math.round((exportSettings.textY ?? 210) * PREVIEW_SCALE);
+  const startTextDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorLocked) return;
 
-    dragStateRef.current = {
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+
+    const currentPreviewX = Math.round((exportSettings.textX ?? 40) * PREVIEW_SCALE + PREVIEW_OFFSET_X);
+    const currentPreviewY = Math.round((exportSettings.textY ?? 210) * PREVIEW_SCALE + PREVIEW_OFFSET_Y);
+
+    textDragRef.current = {
       active: true,
       offsetX: event.clientX - currentPreviewX,
       offsetY: event.clientY - currentPreviewY,
     };
   };
 
-  const onPreviewPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
-    if (!dragStateRef.current.active) return;
+  const onTextDragMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorLocked || !textDragRef.current.active) return;
 
     event.preventDefault();
-    const nextPreviewX = Math.max(12, Math.min(PREVIEW_WIDTH - 30, event.clientX - dragStateRef.current.offsetX));
-    const nextPreviewY = Math.max(12, Math.min(PREVIEW_HEIGHT - 60, event.clientY - dragStateRef.current.offsetY));
+
+    const textWidth = Number(exportSettings.textWidth ?? DEFAULT_TEXT_WIDTH) * PREVIEW_SCALE;
+    const textHeight = Number(exportSettings.textHeight ?? 260) * PREVIEW_SCALE;
+    const nextPreviewX = Math.max(
+      PREVIEW_OFFSET_X + 8,
+      Math.min(PREVIEW_OFFSET_X + PREVIEW_WIDTH - Math.max(18, textWidth) - 8, event.clientX - textDragRef.current.offsetX)
+    );
+    const nextPreviewY = Math.max(
+      PREVIEW_OFFSET_Y + 8,
+      Math.min(PREVIEW_OFFSET_Y + PREVIEW_HEIGHT - Math.max(18, textHeight) - 8, event.clientY - textDragRef.current.offsetY)
+    );
 
     setExportSettings((prev: any) => ({
       ...prev,
-      textX: Math.round(nextPreviewX / PREVIEW_SCALE),
-      textY: Math.round(nextPreviewY / PREVIEW_SCALE),
+      textX: Math.round((nextPreviewX - PREVIEW_OFFSET_X) / PREVIEW_SCALE),
+      textY: Math.round((nextPreviewY - PREVIEW_OFFSET_Y) / PREVIEW_SCALE),
     }));
   };
 
-  const stopDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
-    dragStateRef.current.active = false;
+  const stopTextDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
+    textDragRef.current.active = false;
+    event?.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
+
+  const startTextResize = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorLocked) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+
+    const mode = (event.currentTarget.dataset.resizeMode as "corner" | "width") || "corner";
+
+    textResizeRef.current = {
+      active: true,
+      mode,
+      startX: event.clientX,
+      startY: event.clientY,
+      startTextWidth: Number(exportSettings.textWidth ?? DEFAULT_TEXT_WIDTH),
+      startTextHeight: Number(exportSettings.textHeight ?? 260),
+    };
+  };
+
+  const onTextResizeMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorLocked || !textResizeRef.current.active) return;
+
+    event.preventDefault();
+    const currentTextWidth = Number(exportSettings.textWidth ?? DEFAULT_TEXT_WIDTH);
+    const currentTextHeight = Number(exportSettings.textHeight ?? 260);
+    const previewX = Number(exportSettings.textX ?? 40) * PREVIEW_SCALE;
+    const previewY = Number(exportSettings.textY ?? 210) * PREVIEW_SCALE;
+
+    const deltaX = (event.clientX - textResizeRef.current.startX) / PREVIEW_SCALE;
+    const deltaY = (event.clientY - textResizeRef.current.startY) / PREVIEW_SCALE;
+
+    const nextTextWidth = Math.min(
+      Math.max(120, Math.round(textResizeRef.current.startTextWidth + deltaX)),
+      Math.max(120, Math.round(PREVIEW_WIDTH - previewX - 20) / PREVIEW_SCALE)
+    );
+
+    if (textResizeRef.current.mode === "width") {
+      if (currentTextWidth === nextTextWidth) return;
+
+      setExportSettings((prev: any) => ({
+        ...prev,
+        textWidth: nextTextWidth,
+      }));
+      return;
+    }
+
+    const nextTextHeight = Math.min(
+      Math.max(120, Math.round(textResizeRef.current.startTextHeight + deltaY)),
+      Math.max(120, Math.round(PREVIEW_HEIGHT - previewY - 20) / PREVIEW_SCALE)
+    );
+
+    if (currentTextWidth === nextTextWidth && currentTextHeight === nextTextHeight) return;
+
+    setExportSettings((prev: any) => ({
+      ...prev,
+      textWidth: nextTextWidth,
+      textHeight: nextTextHeight,
+    }));
+  };
+
+  const stopTextResize = (event?: React.PointerEvent<HTMLDivElement>) => {
+    textResizeRef.current.active = false;
+    event?.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
+
+  const startAuthorDrag = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorLocked) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+    const currentPreviewX = Math.round((exportSettings.authorX ?? exportSettings.textX ?? 40) * PREVIEW_SCALE + PREVIEW_OFFSET_X);
+    const currentPreviewY = Math.round((exportSettings.authorY ?? Math.min(EXPORT_HEIGHT - 120, (exportSettings.textY ?? 210) + (exportSettings.textHeight ?? 260) + 18)) * PREVIEW_SCALE + PREVIEW_OFFSET_Y);
+
+    authorDragRef.current = {
+      active: true,
+      offsetX: event.clientX - currentPreviewX,
+      offsetY: event.clientY - currentPreviewY,
+    };
+  };
+
+  const onAuthorPointerMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorLocked || !authorDragRef.current.active) return;
+
+    event.preventDefault();
+    const nextPreviewX = Math.max(
+      PREVIEW_OFFSET_X + 8,
+      Math.min(PREVIEW_OFFSET_X + PREVIEW_WIDTH - 120, event.clientX - authorDragRef.current.offsetX)
+    );
+    const nextPreviewY = Math.max(
+      PREVIEW_OFFSET_Y + 8,
+      Math.min(PREVIEW_OFFSET_Y + PREVIEW_HEIGHT - 40, event.clientY - authorDragRef.current.offsetY)
+    );
+
+    setExportSettings((prev: any) => ({
+      ...prev,
+      authorX: Math.round((nextPreviewX - PREVIEW_OFFSET_X) / PREVIEW_SCALE),
+      authorY: Math.round((nextPreviewY - PREVIEW_OFFSET_Y) / PREVIEW_SCALE),
+    }));
+  };
+
+  const stopAuthorDrag = (event?: React.PointerEvent<HTMLDivElement>) => {
+    authorDragRef.current.active = false;
+    event?.currentTarget.releasePointerCapture?.(event.pointerId);
+  };
+
+  const startAuthorScale = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorLocked) return;
+
+    event.preventDefault();
+    event.stopPropagation();
+    event.currentTarget.setPointerCapture?.(event.pointerId);
+
+    authorResizeRef.current = {
+      active: true,
+      startY: event.clientY,
+      startAuthorFontSize: Number(exportSettings.authorFontSize ?? Math.max(18, Math.round((exportSettings.fontSize || 32) * 0.75))),
+    };
+  };
+
+  const onAuthorScaleMove = (event: React.PointerEvent<HTMLDivElement>) => {
+    if (editorLocked || !authorResizeRef.current.active) return;
+
+    event.preventDefault();
+    const deltaY = event.clientY - authorResizeRef.current.startY;
+    const nextFontSize = Math.max(
+      14,
+      Math.min(160, Math.round(authorResizeRef.current.startAuthorFontSize + deltaY * 0.35))
+    );
+
+    setExportSettings((prev: any) => ({
+      ...prev,
+      authorFontSize: nextFontSize,
+    }));
+  };
+
+  const stopAuthorScale = (event?: React.PointerEvent<HTMLDivElement>) => {
+    authorResizeRef.current.active = false;
     event?.currentTarget.releasePointerCapture?.(event.pointerId);
   };
 
@@ -372,11 +614,15 @@ export default function QuoteDetail() {
   const otFull = ot?.content || "";
   const otPreview = otFull.length > SHOW_LIMIT ? otFull.slice(0, SHOW_LIMIT) : otFull;
   const previewLines = quote ? buildTextLines(quote.content || "", exportSettings) : [];
-  const previewTextX = Math.round((exportSettings.textX ?? 40) * PREVIEW_SCALE);
-  const previewTextY = Math.round((exportSettings.textY ?? 210) * PREVIEW_SCALE);
-  const previewTextWidth = Math.round((exportSettings.textWidth ?? DEFAULT_TEXT_WIDTH) * PREVIEW_SCALE);
-  const previewFontSize = Math.round((exportSettings.fontSize || 32) * PREVIEW_SCALE);
-  const previewLineHeight = Math.round(((exportSettings.fontSize || 32) * (exportSettings.lineHeight || 1.8)) * PREVIEW_SCALE);
+  const previewTextX = Number(exportSettings.textX ?? 40);
+  const previewTextY = Number(exportSettings.textY ?? 210);
+  const previewTextWidth = Number(exportSettings.textWidth ?? DEFAULT_TEXT_WIDTH);
+  const previewTextHeight = Number(exportSettings.textHeight ?? 260);
+  const previewFontSize = Number(exportSettings.fontSize || 32);
+  const previewLineHeight = Number((exportSettings.fontSize || 32) * (exportSettings.lineHeight || 1.8));
+  const previewAuthorX = Number(exportSettings.authorX ?? exportSettings.textX ?? 40);
+  const previewAuthorY = Number(exportSettings.authorY ?? Math.min(EXPORT_HEIGHT - 120, (exportSettings.textY ?? 210) + (exportSettings.textHeight ?? 260) + 18));
+  const previewAuthorFontSize = Number(exportSettings.authorFontSize ?? Math.max(18, Math.round((exportSettings.fontSize || 32) * 0.75)));
 
   if (loading) return <Spin style={{ display: "block", margin: "40px auto" }} />;
   if (!quote) return <Card><p>金句不存在</p></Card>;
@@ -503,7 +749,7 @@ export default function QuoteDetail() {
         onCancel={() => setExportOpen(false)}
       >
         <Row gutter={16}>
-          <Col span={12}>
+          <Col xs={24} md={12}>
             <div style={{ display: "flex", flexDirection: "column", gap: 12 }}>
               <div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>选择模板</div>
@@ -568,23 +814,77 @@ export default function QuoteDetail() {
               </div>
 
               <div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>显示作者名字</div>
+                <Checkbox
+                  checked={Boolean(exportSettings.showAuthor)}
+                  onChange={(e) => setExportSettings((prev: any) => ({ ...prev, showAuthor: e.target.checked }))}
+                >
+                  显示作者
+                </Checkbox>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>编辑状态</div>
+                <Button
+                  type={editorLocked ? "default" : "primary"}
+                  onClick={() => setEditorLocked((prev) => !prev)}
+                  style={{ width: "100%" }}
+                >
+                  {editorLocked ? "已锁定，点击解锁编辑" : "已解锁，点击锁定编辑"}
+                </Button>
+              </div>
+
+              <div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>文字宽度</div>
-                <Input
-                  value={exportSettings.textWidth}
-                  onChange={(e) =>
-                    setExportSettings((prev: any) => ({ ...prev, textWidth: Number(e.target.value) || DEFAULT_TEXT_WIDTH }))
-                  }
-                />
+                <div style={{ color: "#999", fontSize: 12 }}>
+                  可直接在预览区右侧拖拽调整正文宽度
+                </div>
               </div>
 
               <div>
                 <div style={{ fontWeight: 600, marginBottom: 6 }}>字体大小</div>
-                <Input
-                  value={exportSettings.fontSize}
-                  onChange={(e) =>
-                    setExportSettings((prev: any) => ({ ...prev, fontSize: Number(e.target.value) || 32 }))
-                  }
-                />
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <Slider
+                    min={18}
+                    max={80}
+                    style={{ flex: 1 }}
+                    value={exportSettings.fontSize || 32}
+                    onChange={(value) => setExportSettings((prev: any) => ({ ...prev, fontSize: Number(value) || 32 }))}
+                  />
+                  <Input
+                    style={{ width: 90 }}
+                    value={exportSettings.fontSize}
+                    onChange={(e) =>
+                      setExportSettings((prev: any) => ({ ...prev, fontSize: Number(e.target.value) || 32 }))
+                    }
+                  />
+                </div>
+              </div>
+
+              <div>
+                <div style={{ fontWeight: 600, marginBottom: 6 }}>作者字体大小</div>
+                <div style={{ display: "flex", alignItems: "center", gap: 12 }}>
+                  <Slider
+                    min={14}
+                    max={160}
+                    style={{ flex: 1 }}
+                    value={exportSettings.authorFontSize ?? Math.max(18, Math.round((exportSettings.fontSize || 32) * 0.75))}
+                    onChange={(value) => setExportSettings((prev: any) => ({ ...prev, authorFontSize: Number(value) || 24 }))}
+                  />
+                  <Input
+                    style={{ width: 90 }}
+                    value={exportSettings.authorFontSize ?? Math.max(18, Math.round((exportSettings.fontSize || 32) * 0.75))}
+                    onChange={(e) =>
+                      setExportSettings((prev: any) => ({
+                        ...prev,
+                        authorFontSize: Number(e.target.value) || Math.max(18, Math.round((prev.fontSize || 32) * 0.75)),
+                      }))
+                    }
+                  />
+                </div>
+                <div style={{ color: "#999", fontSize: 12, marginTop: 4 }}>
+                  可在预览区直接拖动作者名字位置
+                </div>
               </div>
 
               <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 8 }}>
@@ -596,7 +896,18 @@ export default function QuoteDetail() {
             </div>
           </Col>
 
-          <Col span={12}>
+          <Col xs={24} md={12}>
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", marginBottom: 12 }}>
+              <div style={{ fontWeight: 600 }}>编辑预览</div>
+              <Button
+                size="small"
+                type={editorLocked ? "default" : "primary"}
+                onClick={() => setEditorLocked((prev) => !prev)}
+              >
+                {editorLocked ? "解锁编辑" : "锁定编辑"}
+              </Button>
+            </div>
+
             <div
               ref={previewContainerRef}
               style={{
@@ -607,69 +918,204 @@ export default function QuoteDetail() {
                 overflow: "hidden",
                 position: "relative",
                 border: "1px solid #e8e8e8",
-                background:
-                  exportSettings.bgType === "image" && exportSettings.bgValue
-                    ? `url(${exportSettings.bgValue}) center/cover no-repeat`
-                    : exportSettings.bgValue || "#ffffff",
+                background: "#000",
                 boxShadow: "0 12px 28px rgba(0,0,0,0.08)",
-                cursor: "move",
-                touchAction: "none",
               }}
-              onPointerDown={startDrag}
-              onPointerMove={onPreviewPointerMove}
-              onPointerUp={stopDrag}
-              onPointerLeave={stopDrag}
-              onPointerCancel={stopDrag}
             >
               <div
                 style={{
                   position: "absolute",
-                  inset: 0,
-                  background: "rgba(255,255,255,0.12)",
-                  pointerEvents: "none",
-                }}
-              />
-
-              <div
-                style={{
-                  position: "absolute",
-                  left: previewTextX,
-                  top: previewTextY,
-                  width: previewTextWidth,
-                  color: exportSettings.fontColor || "#1f2937",
+                  left: PREVIEW_OFFSET_X,
+                  top: PREVIEW_OFFSET_Y,
+                  width: EXPORT_WIDTH,
+                  height: EXPORT_HEIGHT,
+                  transform: `scale(${PREVIEW_SCALE})`,
+                  transformOrigin: "top left",
+                  background:
+                    exportSettings.bgType === "image" && exportSettings.bgValue
+                      ? `url(${exportSettings.bgValue}) center/cover no-repeat`
+                      : exportSettings.bgValue || "#ffffff",
+                  overflow: "hidden",
                 }}
               >
-                <div style={{ display: "flex", flexDirection: "column" }}>
-                  {previewLines.map((line, index) => (
-                    <div
-                      key={`${line}-${index}`}
-                      style={{
-                        fontFamily: exportSettings.fontFamily || "PingFang SC",
-                        fontSize: previewFontSize,
-                        lineHeight: exportSettings.lineHeight || 1.8,
-                        fontWeight: 600,
-                        wordBreak: "break-word",
-                        textAlign: exportSettings.textAlign || "center",
-                        whiteSpace: "pre-wrap",
-                        minHeight: `${previewLineHeight}px`,
-                      }}
-                    >
-                      {line || " "}
-                    </div>
-                  ))}
+                <div
+                  style={{
+                    position: "absolute",
+                    inset: 0,
+                    background: "rgba(255,255,255,0.12)",
+                    pointerEvents: "none",
+                  }}
+                />
+
+                <div
+                  style={{
+                    position: "absolute",
+                    top: 8,
+                    right: 8,
+                    padding: "4px 8px",
+                    borderRadius: 999,
+                    background: "rgba(45, 55, 72, 0.72)",
+                    color: "#fff",
+                    fontSize: 11,
+                    lineHeight: 1,
+                    zIndex: 2,
+                  }}
+                >
+                  1080×1600 实际像素预览
                 </div>
+
+                <div
+                  ref={textBoxRef}
+                  onPointerDown={startTextDrag}
+                  onPointerMove={onTextDragMove}
+                  onPointerUp={stopTextDrag}
+                  onPointerCancel={stopTextDrag}
+                  style={{
+                    position: "absolute",
+                    left: previewTextX,
+                    top: previewTextY,
+                    width: previewTextWidth,
+                    height: previewTextHeight,
+                    color: exportSettings.fontColor || "#1f2937",
+                    overflow: "hidden",
+                    minWidth: 120,
+                    minHeight: 120,
+                    border: "1px dashed rgba(102, 126, 234, 0.4)",
+                    background: "rgba(255,255,255,0.08)",
+                    boxSizing: "border-box",
+                    cursor: editorLocked ? "default" : "move",
+                    touchAction: "none",
+                    userSelect: "none",
+                    pointerEvents: editorLocked ? "none" : "auto",
+                  }}
+                  title="拖动移动正文位置"
+                >
+                  <div style={{ display: "flex", flexDirection: "column" }}>
+                    {previewLines.map((line, index) => (
+                      <div
+                        key={`${line}-${index}`}
+                        style={{
+                          fontFamily: exportSettings.fontFamily || "PingFang SC",
+                          fontSize: previewFontSize,
+                          lineHeight: exportSettings.lineHeight || 1.8,
+                          fontWeight: 600,
+                          wordBreak: "break-word",
+                          textAlign: exportSettings.textAlign || "center",
+                          whiteSpace: "pre-wrap",
+                          minHeight: `${previewLineHeight}px`,
+                        }}
+                      >
+                        {line || " "}
+                      </div>
+                    ))}
+                  </div>
+                </div>
+
                 {exportSettings.showAuthor && (
                   <div
+                    onPointerDown={startAuthorDrag}
+                    onPointerMove={onAuthorPointerMove}
+                    onPointerUp={stopAuthorDrag}
+                    onPointerCancel={stopAuthorDrag}
                     style={{
-                      marginTop: Math.round(24 * PREVIEW_SCALE),
-                      fontSize: Math.round(16 * PREVIEW_SCALE),
+                      position: "absolute",
+                      left: previewAuthorX,
+                      top: previewAuthorY,
+                      fontSize: previewAuthorFontSize,
                       opacity: 0.85,
-                      textAlign: exportSettings.textAlign || "center",
+                      color: exportSettings.fontColor || "#1f2937",
+                      cursor: editorLocked ? "default" : "move",
+                      touchAction: "none",
+                      whiteSpace: "nowrap",
+                      userSelect: "none",
+                      padding: "2px 4px",
+                      border: "1px dashed rgba(102, 126, 234, 0.25)",
+                      borderRadius: 4,
+                      background: "rgba(255,255,255,0.04)",
+                      pointerEvents: editorLocked ? "none" : "auto",
+                      zIndex: 3,
                     }}
+                    title="拖动移动作者名字位置"
                   >
-                    —— {quote.author || "佚名"}
+                    —— {quote.author || "佚名"}{quote.source ? ` 《${quote.source}》` : ""}
+                    <div
+                      onPointerDown={startAuthorScale}
+                      onPointerMove={onAuthorScaleMove}
+                      onPointerUp={stopAuthorScale}
+                      onPointerLeave={stopAuthorScale}
+                      onPointerCancel={stopAuthorScale}
+                      style={{
+                        position: "absolute",
+                        right: -4,
+                        bottom: -4,
+                        width: 10,
+                        height: 10,
+                        borderRight: "2px solid rgba(102, 126, 234, 0.95)",
+                        borderBottom: "2px solid rgba(102, 126, 234, 0.95)",
+                        background: "rgba(255,255,255,0.18)",
+                        borderRadius: 2,
+                        cursor: editorLocked ? "default" : "nwse-resize",
+                        touchAction: "none",
+                        pointerEvents: editorLocked ? "none" : "auto",
+                      }}
+                      title="拖拽调整作者字号"
+                    />
                   </div>
                 )}
+                <div
+                  data-resize-mode="width"
+                  onPointerDown={startTextResize}
+                  onPointerMove={onTextResizeMove}
+                  onPointerUp={stopTextResize}
+                  onPointerLeave={stopTextResize}
+                  onPointerCancel={stopTextResize}
+                  style={{
+                    position: "absolute",
+                    top: previewTextY + previewTextHeight / 2 - 10,
+                    left: previewTextX + previewTextWidth - 6,
+                    width: 12,
+                    height: 20,
+                    border: "2px solid rgba(102, 126, 234, 0.95)",
+                    background: "rgba(255,255,255,0.22)",
+                    borderRadius: 2,
+                    cursor: editorLocked ? "default" : "ew-resize",
+                    touchAction: "none",
+                    pointerEvents: editorLocked ? "none" : "auto",
+                    zIndex: 4,
+                  }}
+                  title="拖拽调整正文宽度"
+                />
+                {[
+                  { key: "nw", top: -7, left: -7, cursor: "nwse-resize" },
+                  { key: "ne", top: -7, right: -7, cursor: "nesw-resize" },
+                  { key: "sw", bottom: -7, left: -7, cursor: "nesw-resize" },
+                  { key: "se", bottom: -7, right: -7, cursor: "nwse-resize" },
+                ].map((handle) => (
+                  <div
+                    key={handle.key}
+                    onPointerDown={startTextResize}
+                    onPointerMove={onTextResizeMove}
+                    onPointerUp={stopTextResize}
+                    onPointerLeave={stopTextResize}
+                    onPointerCancel={stopTextResize}
+                    style={{
+                      position: "absolute",
+                      top: handle.top,
+                      left: handle.left,
+                      right: handle.right,
+                      bottom: handle.bottom,
+                      width: 12,
+                      height: 12,
+                      border: "2px solid rgba(102, 126, 234, 0.95)",
+                      background: "rgba(255,255,255,0.22)",
+                      borderRadius: 2,
+                      cursor: editorLocked ? "default" : handle.cursor,
+                      touchAction: "none",
+                      pointerEvents: editorLocked ? "none" : "auto",
+                    }}
+                    title="拖拽调整正文框大小"
+                  />
+                ))}
               </div>
             </div>
           </Col>
