@@ -3,8 +3,8 @@
 # 使用方式：
 #   1. 复制 .env.example 为 .env 并修改配置（至少设置 GHCR_OWNER / GHCR_TAG）
 #   2. docker compose up -d
-#   3. 访问 http://localhost:8080  （管理后台）
-#                    http://localhost:3000  （后端 API）
+#   3. 访问 http://localhost:6080  （管理后台）
+#                    http://localhost:6010  （后端 API）
 # ====================================================================
 
 services:
@@ -15,14 +15,14 @@ services:
     container_name: shiju-server
     restart: unless-stopped
     ports:
-      - "${PORT:-3000}:3000"
+      - "${PORT:-6010}:6010"
     # 让容器内可以通过 host.docker.internal 访问宿主机上的 Ollama 等服务
     # AI 配置的 baseUrl 建议填 http://host.docker.internal:8800/v1 或 http://127.0.0.1:8800/v1
     extra_hosts:
       - "host.docker.internal:host-gateway"
     environment:
       NODE_ENV: production
-      PORT: ${PORT:-3000}
+      PORT: ${PORT:-6010}
       # ---- 数据库连接（默认 PostgreSQL）----
       # 注意：SQLAlchemy 的连接串，不要带 Prisma 的 ?schema=public 等参数
       DATABASE_URL: ${DATABASE_URL:-postgresql://postgres:postgres@postgres:5432/shiju}
@@ -37,7 +37,7 @@ services:
       - common_net
     healthcheck:
       # 用 curl 探测健康检查端点（python:3.11-slim 已装 curl）
-      test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
+      test: ["CMD-SHELL", "curl -fs http://localhost:6010/api/health || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
@@ -50,7 +50,7 @@ services:
     container_name: shiju-web
     restart: unless-stopped
     ports:
-      - "8080:80"
+      - "6080:80"
     depends_on:
       shiju-server:
         condition: service_healthy
@@ -100,9 +100,9 @@ networks:
 
 # ====================================================================
 # 端口速查表
-#   3000  - 后端 API（可通过 PORT 环境变量修改）
+#   6010  - 后端 API（可通过 PORT 环境变量修改）
 #   5173  - 前端 Vite dev server（仅本地开发）
-#   8080  - 前端 Nginx 生产容器端口
+#   6080  - 前端 Nginx 生产容器端口
 #   5432  - PostgreSQL（可通过 PG_PORT 修改）
 #   3306  - MySQL（如启用）
 # ====================================================================
