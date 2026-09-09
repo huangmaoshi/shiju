@@ -194,7 +194,7 @@
 | 去重算法 | **MD5 精确匹配 + SimHash 相似度** | 短文本 <100 字 MD5，长文本 ≥100 字 SimHash（汉明距离 ≤10 → 相似度 >85%） |
 | GitHub 直导入 | httpx | 30s 超时、3 次自动重试、指数退避、中文路径自动 URL 编码 |
 | HTTP 客户端（爬虫） | httpx + BeautifulSoup4 | 复用 server 的 SQLAlchemy 模型 |
-| 管理后台 | React 18 + Ant Design 5 + Vite + Tailwind | 5173 端口，开发代理 `/api/*` → :3000 |
+| 管理后台 | React 18 + Ant Design 5 + Vite + Tailwind | 5173 端口，开发代理 `/api/*` → :6010 |
 | 移动端 | Flutter 3.x | Provider + Dio |
 | 容器化 | Docker + docker-compose | python:3.11-slim / node:20-alpine / nginx |
 
@@ -433,10 +433,10 @@ cd server
 pip install -r requirements.txt
 
 # 开发模式（自动重载）
-python run.py                    # → http://localhost:3000
+python run.py                    # → http://localhost:6010
 
 # 或直接 uvicorn
-uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
+uvicorn app.main:app --host 0.0.0.0 --port 6010 --reload
 ```
 
 首次启动自动建表 + 创建默认管理员 `admin / admin123`（请尽快改密码）。
@@ -444,7 +444,7 @@ uvicorn app.main:app --host 0.0.0.0 --port 3000 --reload
 **环境变量**（`server/.env`，未设置时自动回退到 SQLite）：
 
 ```env
-PORT=3000
+PORT=6010
 NODE_ENV=development
 DATABASE_URL=sqlite:///data/dev.db     # 生产换 postgresql://... 或 mysql://...
 JWT_SECRET="change_in_production"
@@ -467,7 +467,7 @@ npm install
 npm run dev                               # → http://localhost:5173
 ```
 
-Vite 自动将 `/api/*` 代理到 `http://localhost:3000`。
+Vite 自动将 `/api/*` 代理到 `http://localhost:6010`。
 
 登录后台：`http://localhost:5173/admin/login`，Admin Key 为 `server/.env` 中的 `ADMIN_KEY`。
 
@@ -511,7 +511,7 @@ python -m crawler.index                                  # 守护模式（APSche
 | [server/Dockerfile](server/Dockerfile) | 后端镜像：`python:3.11-slim` + 依赖 + uvicorn 启动 |
 | [server/.dockerignore](server/.dockerignore) | 后端构建排除（`__pycache__` / `data/` / `.env` 等） |
 | [web/Dockerfile](web/Dockerfile) | 前端镜像：`node:20-alpine` 编译 → `nginx:alpine` 托管 |
-| [web/nginx.conf](web/nginx.conf) | Nginx 配置：静态资源 + `/api/*` 反代 `shiju-server:3000` |
+| [web/nginx.conf](web/nginx.conf) | Nginx 配置：静态资源 + `/api/*` 反代 `shiju-server:6010` |
 | [.env.example](.env.example) | 环境变量示例（含 PG / SQLite / MySQL 三种 DATABASE_URL） |
 
 #### 快速启动
@@ -520,8 +520,8 @@ python -m crawler.index                                  # 守护模式（APSche
 # 1. 复制环境变量文件并修改（务必改 JWT_SECRET 和 ADMIN_KEY）
 cp .env.example .env
 
-# 2. 一键构建并启动（首次会拉镜像 + 编译，耗时较长）
-docker compose up -d --build
+# 2. 直接拉取 GHCR 镜像并启动
+docker compose up -d
 
 # 3. 查看启动日志（确认健康检查通过）
 docker compose logs -f shiju-server
@@ -536,8 +536,8 @@ docker compose exec shiju-server python seed.py
 
 | 服务 | 地址 | 说明 |
 |---|---|---|
-| 后端 API | `http://localhost:3000` | FastAPI + SQLAlchemy，健康检查 `/api/health` |
-| 管理后台 | `http://localhost:8080/admin/login` | Nginx + React 静态，Admin Key 为 `ADMIN_KEY` |
+| 后端 API | `http://localhost:6010` | FastAPI + SQLAlchemy，健康检查 `/api/health` |
+| 管理后台 | `http://localhost:6080/admin/login` | Nginx + React 静态，Admin Key 为 `ADMIN_KEY` |
 | PostgreSQL | `localhost:5432` | 可通过 `PG_PORT` 修改 |
 
 #### 常用运维命令
@@ -553,8 +553,11 @@ docker compose logs -f shiju-web
 # 重启某个服务
 docker compose restart shiju-server
 
-# 代码更新后重新构建并启动
-docker compose up -d --build shiju-server
+# 代码更新后重新拉取并重启
+
+docker compose pull shiju-server
+
+docker compose up -d shiju-server
 
 # 进入后端容器排查
 docker compose exec shiju-server bash
@@ -587,13 +590,13 @@ DATABASE_URL: "sqlite:///data/dev.db"
 │  docker-compose                                          │
 │                                                          │
 │  ┌─────────────────────────────────────────────────┐    │
-│  │  shiju-web (Nginx)         端口 8080 → 80       │    │
+│  │  shiju-web (Nginx)         端口 6080 → 80       │    │
 │  │  静态资源 /usr/share/nginx/html                 │    │
-│  │  /api/* → proxy_pass → shiju-server:3000        │    │
+│  │  /api/* → proxy_pass → shiju-server:6010        │    │
 │  └──────────────────────┬──────────────────────────┘    │
 │                         │ depends_on (healthy)          │
 │  ┌──────────────────────▼──────────────────────────┐    │
-│  │  shiju-server (Python 3.11)  端口 3000         │    │
+│  │  shiju-server (Python 3.11)  端口 6010         │    │
 │  │  uvicorn app.main:app --host 0.0.0.0            │    │
 │  │  启动时自动建表 + 建管理员 + 启动 cron 调度     │    │
 │  │  数据卷 ./server/data → /app/data（SQLite 用）  │    │
@@ -627,10 +630,10 @@ cp ../.env.example .env
 #   ADMIN_KEY=<强随机串>
 
 # 方式一：直接启动（单进程，reload 已自动关闭）
-NODE_ENV=production python run.py --no-reload --port 3000
+NODE_ENV=production python run.py --no-reload --port 6010
 
 # 方式二：uvicorn 多 worker（推荐生产）
-uvicorn app.main:app --host 0.0.0.0 --port 3000 --workers 4
+uvicorn app.main:app --host 0.0.0.0 --port 6010 --workers 4
 
 # 首次部署灌入种子数据
 python seed.py
@@ -649,7 +652,7 @@ Type=simple
 User=www-data
 WorkingDirectory=/opt/shiju/server
 EnvironmentFile=/opt/shiju/server/.env
-ExecStart=/opt/shiju/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 3000 --workers 4
+ExecStart=/opt/shiju/.venv/bin/uvicorn app.main:app --host 0.0.0.0 --port 6010 --workers 4
 Restart=always
 RestartSec=5
 
@@ -689,7 +692,7 @@ server {
 
     # API 反代到后端
     location /api/ {
-        proxy_pass http://127.0.0.1:3000;
+        proxy_pass http://127.0.0.1:6010;
         proxy_set_header Host $host;
         proxy_set_header X-Real-IP $remote_addr;
         proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
@@ -766,14 +769,14 @@ sudo nginx -t && sudo systemctl reload nginx
 
 | 端口 | 服务 |
 |---|---|
-| 3000 | 后端 API（FastAPI / uvicorn）|
+| 6010 | 后端 API（FastAPI / uvicorn）|
 | 5173 | 管理后台开发服务器（Vite dev）|
-| 8080 | 管理后台生产容器内端口（Nginx）|
+| 6080 | 管理后台生产容器内端口（Nginx）|
 | 3306 | MySQL（docker-compose 内部，可选）|
 | 5432 | PostgreSQL（docker-compose 内部，可选）|
 
 ```bash
-curl http://localhost:3000/api/health
+curl http://localhost:6010/api/health
 # {"code":0,"data":{"status":"ok","uptime":1234,"version":"1.0.0"}}
 ```
 

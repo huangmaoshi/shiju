@@ -27,8 +27,8 @@ RUN mkdir -p data
 # 生产模式默认关闭 reload
 ENV NODE_ENV=production
 
-EXPOSE 3000
+EXPOSE 6010
 
 # 启动：uvicorn 直接多 worker，或用 run.py
 # 用 run.py 会读 config.port 并自动关闭 reload（NODE_ENV=production）
-CMD ["python", "run.py", "--host", "0.0.0.0", "--port", "3000", "--no-reload"]
+CMD ["python", "run.py", "--host", "0.0.0.0", "--port", "6010", "--no-reload"]

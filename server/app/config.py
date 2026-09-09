@@ -19,7 +19,7 @@ def _get_int(name: str, default: int) -> int:
 
 
 class Config:
-    port: int = _get_int("PORT", 3000)
+    port: int = _get_int("PORT", 6010)
     node_env: str = os.getenv("NODE_ENV", "development")
     jwt_secret: str = os.getenv("JWT_SECRET", "")
     jwt_expires_in: str = os.getenv("JWT_EXPIRES_IN", "2h")

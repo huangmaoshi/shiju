@@ -1,7 +1,7 @@
 """拾句项目一键启动器
 
 同时启动：
-  1. server  —— FastAPI 后端（默认 0.0.0.0:3000）
+  1. server  —— FastAPI 后端（默认 0.0.0.0:6010）
   2. crawler  —— 爬虫守护进程（默认启用调度器）
 
 用法：
@@ -105,7 +105,7 @@ def spawn(args: list, cwd: Path, prefix: str, env: dict | None = None) -> subpro
 def main() -> int:
     parser = argparse.ArgumentParser(description="拾句项目一键启动（server + crawler）")
     parser.add_argument("--host", default=os.getenv("HOST", "0.0.0.0"), help="后端监听地址")
-    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "3000")), help="后端端口")
+    parser.add_argument("--port", type=int, default=int(os.getenv("PORT", "6010")), help="后端端口")
     parser.add_argument("--no-reload", action="store_true", help="后端关闭热重载（默认开发模式开启）")
     parser.add_argument("--no-server", action="store_true", help="不启动后端")
     parser.add_argument("--no-crawler", action="store_true", help="不启动爬虫")

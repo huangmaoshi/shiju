@@ -4,7 +4,7 @@
     python run.py            # 开发模式（自动重载）
     python run.py --no-reload
 等价于：
-    uvicorn app.main:app --host 0.0.0.0 --port 3000
+    uvicorn app.main:app --host 0.0.0.0 --port 6010
 """
 import argparse
 import os
