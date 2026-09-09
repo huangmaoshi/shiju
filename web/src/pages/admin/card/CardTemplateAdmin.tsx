@@ -246,3 +246,146 @@ export default function CardTemplateAdmin() {
             </Col>
           </Row>
 
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="bgType" label="背景类型" rules={[{ required: true }]}>
+                <Select options={[{ label: "纯色", value: "color" }, { label: "图片", value: "image" }]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="bgValue" label="背景值（支持网络 URL / 本地图片 data URL）">
+                <Input.TextArea rows={3} placeholder="可填写颜色值，如 #ffffff；也可填写图片 URL 或本地图片 Base64/data URL" />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={24}>
+              <Form.Item label="本地背景图片">
+                <input type="file" accept="image/*" onChange={handleBgFileChange} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="fontFamily" label="字体">
+                <Select options={FONT_OPTIONS} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="fontColor" label="字体颜色">
+                <Input />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="fontSize" label="字体大小" initialValue={32}>
+                <InputNumber min={12} max={80} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="lineHeight" label="行高" initialValue={1.8}>
+                <InputNumber min={1} max={3} step={0.1} style={{ width: "100%" }} />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="textAlign" label="文字位置">
+                <Select options={[{ label: "居中", value: "center" }, { label: "左对齐", value: "left" }, { label: "右对齐", value: "right" }]} />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={8}>
+              <Form.Item name="showAuthor" label="显示作者" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="showWatermark" label="显示水印" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+            </Col>
+            <Col span={8}>
+              <Form.Item name="isMember" label="是否会员模板" valuePropName="checked">
+                <Switch />
+              </Form.Item>
+            </Col>
+          </Row>
+
+          <Row gutter={16}>
+            <Col span={12}>
+              <Form.Item name="status" label="状态" initialValue={1}>
+                <Select options={[{ label: "启用", value: 1 }, { label: "停用", value: 0 }]} />
+              </Form.Item>
+            </Col>
+            <Col span={12}>
+              <Form.Item name="previewUrl" label="预览图 URL">
+                <Input placeholder="可选，给前台展示用" />
+              </Form.Item>
+            </Col>
+          </Row>
+        </Form>
+      </Modal>
+
+      <Modal
+        title={previewItem?.name ? `${previewItem.name} 预览` : "模板预览"}
+        open={previewOpen}
+        width={520}
+        footer={null}
+        onCancel={() => setPreviewOpen(false)}
+      >
+        <div
+          style={{
+            width: 360,
+            height: 520,
+            margin: "0 auto",
+            borderRadius: 18,
+            overflow: "hidden",
+            position: "relative",
+            border: "1px solid #e8e8e8",
+            background:
+              previewItem?.bgType === "image" && previewItem?.bgValue
+                ? `url(${previewItem.bgValue}) center/cover no-repeat`
+                : previewItem?.bgValue || "#fff",
+            boxShadow: "0 12px 28px rgba(0,0,0,0.08)",
+          }}
+        >
+          <div
+            style={{
+              position: "absolute",
+              inset: 0,
+              background: "rgba(255,255,255,0.14)",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: previewItem?.textAlign || "center",
+              padding: 32,
+            }}
+          >
+            <div style={{ width: "100%", color: previewItem?.fontColor || "#1f2937", textAlign: previewItem?.textAlign || "center" }}>
+              <div
+                style={{
+                  fontFamily: previewItem?.fontFamily || "PingFang SC",
+                  fontSize: previewItem?.fontSize || 32,
+                  lineHeight: previewItem?.lineHeight || 1.8,
+                  fontWeight: 600,
+                  whiteSpace: "pre-wrap",
+                }}
+              >
+                {"把每一句金句，都变成一张可分享的卡片"}
+              </div>
+              {previewItem?.showAuthor !== 0 && (
+                <div style={{ marginTop: 24, fontSize: 16, opacity: 0.85 }}>
+                  —— 拾句
+                </div>
+              )}
+            </div>
+          </div>
+        </div>
+      </Modal>
+    </Card>
+  );
+}
