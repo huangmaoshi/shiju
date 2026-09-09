@@ -1,5 +1,5 @@
 import { apiGet, apiPost, apiPut, apiDelete } from "./client";
-import type { DailyRecommend, DashboardStats, User, CrawlerTask, AdConfig, Quote, Category, OriginalText, AiConfig, AiTask } from "@/types";
+import type { DailyRecommend, DashboardStats, User, CrawlerTask, AdConfig, Quote, Category, OriginalText, AiConfig, AiTask, CardTemplate } from "@/types";
 
 export const userApi = {
   me: () => apiGet<User>("/v1/user/me"),
@@ -30,6 +30,11 @@ export const dailyApi = {
 
 export const statsApi = {
   home: () => apiGet<{ quoteTotal: number; categoryTotal: number; templateTotal: number; dailyRecommendCount: number }>("/v1/stats/home"),
+};
+
+export const cardTemplateApi = {
+  list: () => apiGet<CardTemplate[]>("/v1/card-templates/"),
+  get: (id: number) => apiGet<CardTemplate>(`/v1/card-templates/${id}`),
 };
 
 export const collectionApi = {
