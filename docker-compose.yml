@@ -1,38 +1,17 @@
 # ====================================================================
 # 拾句 · Docker Compose 一键部署（Python 版）
 # 使用方式：
-#   1. 复制 .env.example 为 .env 并修改配置
-#   2. docker compose up -d --build
+#   1. 复制 .env.example 为 .env 并修改配置（至少设置 GHCR_OWNER / GHCR_TAG）
+#   2. docker compose up -d
 #   3. 访问 http://localhost:8080  （管理后台）
 #                    http://localhost:3000  （后端 API）
 # ====================================================================
 
 services:
-  # ========== PostgreSQL 数据库 ==========
-  postgres:
-    image: postgres:16-alpine
-    container_name: shiju-postgres
-    restart: unless-stopped
-    environment:
-      POSTGRES_USER: ${PG_USER:-postgres}
-      POSTGRES_PASSWORD: ${PG_PASSWORD:-postgres}
-      POSTGRES_DB: ${PG_DATABASE:-shiju}
-    ports:
-      - "${PG_PORT:-5432}:5432"
-    volumes:
-      - postgres_data:/var/lib/postgresql/data
-    healthcheck:
-      test: ["CMD-SHELL", "pg_isready -U ${PG_USER:-postgres} -d ${PG_DATABASE:-shiju}"]
-      interval: 10s
-      timeout: 5s
-      retries: 5
-      start_period: 10s
-
   # ========== 后端 API 服务（Python · FastAPI · uvicorn）==========
   shiju-server:
-    build:
-      context: ./server
-      dockerfile: Dockerfile
+    image: ghcr.io/${GHCR_OWNER:-your-github-username}/shiju-server:${GHCR_TAG:-latest}
+    pull_policy: always
     container_name: shiju-server
     restart: unless-stopped
     ports:
@@ -54,9 +33,8 @@ services:
     volumes:
       # SQLite 模式下数据持久化（PG 模式无影响）
       - ./server/data:/app/data
-    depends_on:
-      postgres:
-        condition: service_healthy
+    networks:
+      - common_net
     healthcheck:
       # 用 curl 探测健康检查端点（python:3.11-slim 已装 curl）
       test: ["CMD-SHELL", "curl -fs http://localhost:3000/api/health || exit 1"]
@@ -67,9 +45,8 @@ services:
 
   # ========== 前端管理后台（React + Nginx）==========
   shiju-web:
-    build:
-      context: ./web
-      dockerfile: Dockerfile
+    image: ghcr.io/${GHCR_OWNER:-your-github-username}/shiju-web:${GHCR_TAG:-latest}
+    pull_policy: always
     container_name: shiju-web
     restart: unless-stopped
     ports:
@@ -77,15 +54,17 @@ services:
     depends_on:
       shiju-server:
         condition: service_healthy
+    networks:
+      - common_net
     healthcheck:
       test: ["CMD-SHELL", "wget --spider -q http://localhost/ || exit 1"]
       interval: 30s
       timeout: 5s
       retries: 3
 
-# ========== 数据卷 ==========
-volumes:
-  postgres_data:
+networks:
+  common_net:
+    name: common_ne
 
 # ====================================================================
 # 以下为可选数据库配置，如需使用请：
