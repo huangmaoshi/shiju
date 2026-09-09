@@ -6,9 +6,9 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 先拷 package.json，利用 Docker 层缓存
+# 先拷 package.json，利用 Docker 层缓存，并显式安装开发依赖
 COPY package.json package-lock.json* ./
-RUN npm install
+RUN npm install --include=dev
 
 # 拷源码并编译
 COPY tsconfig.json tsconfig*.json* ./
