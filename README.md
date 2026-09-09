@@ -520,7 +520,9 @@ python -m crawler.index                                  # 守护模式（APSche
 # 1. 复制环境变量文件并修改（务必改 JWT_SECRET 和 ADMIN_KEY）
 cp .env.example .env
 
-# 2. 直接拉取 GHCR 镜像并启动
+# 2. 直接拉取 GHCR 镜像并启动（默认镜像地址为 ghcr.io/huangmaoshi）
+docker pull ghcr.io/huangmaoshi/shiju-server:latest
+docker pull ghcr.io/huangmaoshi/shiju-web:latest
 docker compose up -d
 
 # 3. 查看启动日志（确认健康检查通过）
