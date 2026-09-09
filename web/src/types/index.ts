@@ -71,9 +71,20 @@ export interface CardTemplate {
   id: number;
   name: string;
   style: string;
+  bgType?: string;
+  bgValue?: string;
+  fontFamily?: string;
+  fontSize?: number;
+  fontColor?: string;
+  lineHeight?: number;
+  textAlign?: string;
+  showAuthor?: number;
+  showWatermark?: number;
+  isMember?: number;
+  status?: number;
   previewUrl?: string;
-  isFree: boolean;
-  sort: number;
+  isFree?: boolean;
+  sort?: number;
 }
 
 export interface AdConfig {
