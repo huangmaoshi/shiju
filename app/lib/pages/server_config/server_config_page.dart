@@ -15,6 +15,27 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
   bool _isSaving = false;
   StorageUtil? _storage;
 
+  String _normalizeBaseUrl(String raw) {
+    final trimmed = raw.trim();
+    if (trimmed.isEmpty) {
+      return ApiConfig.defaultBaseUrl;
+    }
+
+    final hasScheme = trimmed.startsWith('http://') || trimmed.startsWith('https://');
+    var normalized = hasScheme ? trimmed : 'http://$trimmed';
+
+    normalized = normalized.trimRight('/');
+    if (!normalized.endsWith('/api/v1')) {
+      if (normalized.endsWith('/api')) {
+        normalized = '${normalized}/v1';
+      } else {
+        normalized = '$normalized/api/v1';
+      }
+    }
+
+    return normalized;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -29,8 +50,7 @@ class _ServerConfigPageState extends State<ServerConfigPage> {
   }
 
   Future<void> _saveConfig() async {
-    final trimmed = _baseUrlController.text.trim();
-    final nextUrl = trimmed.isEmpty ? ApiConfig.defaultBaseUrl : trimmed;
+    final nextUrl = _normalizeBaseUrl(_baseUrlController.text);
 
     setState(() => _isSaving = true);
 
