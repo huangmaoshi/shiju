@@ -79,7 +79,7 @@ class _MemberPageState extends State<MemberPage> {
         gradient: LinearGradient(
           colors: isMember
               ? [const Color(0xFFFFD700), const Color(0xFFFFA500)]
-              : [AppTheme.primary, AppTheme.primary.withValues(alpha: 0.7)],
+              : [AppTheme.primary, AppTheme.primary.withOpacity(0.7)],
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
         ),
