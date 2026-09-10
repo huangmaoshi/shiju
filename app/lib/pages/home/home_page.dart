@@ -76,7 +76,7 @@ class _HomePageState extends State<HomePage> {
       padding: const EdgeInsets.symmetric(horizontal: 16),
       child: Card(
         elevation: 0,
-        color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+        color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
         child: Padding(
           padding: const EdgeInsets.all(20),
           child: Column(

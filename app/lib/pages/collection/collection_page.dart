@@ -105,7 +105,7 @@ class _CollectionPageState extends State<CollectionPage> {
                         Container(
                           height: 90,
                           decoration: BoxDecoration(
-                            color: theme.colorScheme.primaryContainer.withOpacity(0.5),
+                            color: theme.colorScheme.primaryContainer.withValues(alpha: 0.5),
                             borderRadius: const BorderRadius.vertical(
                               top: Radius.circular(16),
                             ),
