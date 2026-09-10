@@ -46,19 +46,7 @@ class AuthProvider extends ChangeNotifier {
         avatarUrl: avatarUrl,
       );
       if (response.isSuccess && response.data != null) {
-        final data = response.data!;
-        final accessToken = data['accessToken'] as String;
-        final refreshToken = data['refreshToken'] as String;
-        final userJson = data['user'] as Map<String, dynamic>?;
-
-        await _storage.saveTokens(
-          accessToken: accessToken,
-          refreshToken: refreshToken,
-        );
-        if (userJson != null) {
-          _user = User.fromJson(userJson);
-          await _storage.saveUserId(_user!.id);
-        }
+        _applyLoginResponse(response.data!);
       } else {
         _error = response.message;
       }
@@ -67,6 +55,52 @@ class AuthProvider extends ChangeNotifier {
     } finally {
       _isLoading = false;
       notifyListeners();
+    }
+  }
+
+  Future<void> accountLogin({
+    required String username,
+    required String password,
+  }) async {
+    _isLoading = true;
+    _error = null;
+    notifyListeners();
+
+    try {
+      final response = await _authApi.login(
+        username: username,
+        password: password,
+      );
+      if (response.isSuccess && response.data != null) {
+        _applyLoginResponse(response.data!);
+      } else {
+        _error = response.message;
+      }
+    } catch (e) {
+      _error = e.toString();
+    } finally {
+      _isLoading = false;
+      notifyListeners();
+    }
+  }
+
+  Future<void> _applyLoginResponse(Map<String, dynamic> data) async {
+    final token = data['token'] as String? ?? data['accessToken'] as String?;
+    if (token == null || token.isEmpty) {
+      _error = '登录响应中缺少 token';
+      return;
+    }
+
+    final refreshToken = data['refreshToken'] as String? ?? token;
+    final userJson = data['user'] as Map<String, dynamic>?;
+
+    await _storage.saveTokens(
+      accessToken: token,
+      refreshToken: refreshToken,
+    );
+    if (userJson != null) {
+      _user = User.fromJson(userJson);
+      await _storage.saveUserId(_user!.id);
     }
   }
 

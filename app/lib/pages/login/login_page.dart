@@ -13,10 +13,16 @@ class LoginPage extends StatefulWidget {
 
 class _LoginPageState extends State<LoginPage> {
   final _nicknameController = TextEditingController();
+  final _usernameController = TextEditingController();
+  final _passwordController = TextEditingController();
+  int _tapCount = 0;
+  DateTime? _lastTapAt;
 
   @override
   void dispose() {
     _nicknameController.dispose();
+    _usernameController.dispose();
+    _passwordController.dispose();
     super.dispose();
   }
 
@@ -31,6 +37,41 @@ class _LoginPageState extends State<LoginPage> {
     if (!mounted) return;
     if (auth.isAuthenticated) {
       Navigator.of(context).pushReplacementNamed('/home');
+    }
+  }
+
+  Future<void> _onAccountLogin() async {
+    final auth = context.read<AuthProvider>();
+    final username = _usernameController.text.trim();
+    final password = _passwordController.text.trim();
+
+    if (username.isEmpty || password.isEmpty) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('请输入账号和密码')),
+      );
+      return;
+    }
+
+    await auth.accountLogin(username: username, password: password);
+    if (!mounted) return;
+    if (auth.isAuthenticated) {
+      Navigator.of(context).pushReplacementNamed('/home');
+    }
+  }
+
+  void _handleLogoTap() {
+    final now = DateTime.now();
+    if (_lastTapAt != null && now.difference(_lastTapAt!).inMilliseconds < 700) {
+      _tapCount++;
+    } else {
+      _tapCount = 1;
+    }
+
+    _lastTapAt = now;
+
+    if (_tapCount >= 5) {
+      _tapCount = 0;
+      Navigator.of(context).pushNamed('/server-config');
     }
   }
 
@@ -56,24 +97,27 @@ class _LoginPageState extends State<LoginPage> {
             child: Column(
               children: [
                 const Spacer(flex: 2),
-                Container(
-                  width: 96,
-                  height: 96,
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary,
-                    borderRadius: BorderRadius.circular(24),
-                    boxShadow: [
-                      BoxShadow(
-                        color: AppTheme.primary.withValues(alpha: 0.3),
-                        blurRadius: 20,
-                        offset: const Offset(0, 8),
-                      ),
-                    ],
-                  ),
-                  child: const Icon(
-                    Icons.format_quote,
-                    color: Colors.white,
-                    size: 48,
+                GestureDetector(
+                  onTap: _handleLogoTap,
+                  child: Container(
+                    width: 96,
+                    height: 96,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      borderRadius: BorderRadius.circular(24),
+                      boxShadow: [
+                        BoxShadow(
+                          color: AppTheme.primary.withValues(alpha: 0.3),
+                          blurRadius: 20,
+                          offset: const Offset(0, 8),
+                        ),
+                      ],
+                    ),
+                    child: const Icon(
+                      Icons.format_quote,
+                      color: Colors.white,
+                      size: 48,
+                    ),
                   ),
                 ),
                 const SizedBox(height: 20),
@@ -105,6 +149,33 @@ class _LoginPageState extends State<LoginPage> {
                           ),
                         ),
                         const SizedBox(height: 16),
+                        TextField(
+                          controller: _usernameController,
+                          decoration: const InputDecoration(
+                            hintText: '账号',
+                            prefixIcon: Icon(Icons.account_circle_outlined),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
+                        TextField(
+                          controller: _passwordController,
+                          obscureText: true,
+                          decoration: const InputDecoration(
+                            hintText: '密码',
+                            prefixIcon: Icon(Icons.lock_outline),
+                          ),
+                        ),
+                        const SizedBox(height: 16),
+                        SizedBox(
+                          width: double.infinity,
+                          height: 52,
+                          child: FilledButton.icon(
+                            onPressed: _onAccountLogin,
+                            icon: const Icon(Icons.login, size: 22),
+                            label: const Text('账号密码登录'),
+                          ),
+                        ),
+                        const SizedBox(height: 12),
                         SizedBox(
                           width: double.infinity,
                           height: 52,

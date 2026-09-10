@@ -21,12 +21,18 @@ class StorageUtil {
 
   String? get userId => _prefs?.getString(StorageKeys.userId);
 
+  String? get apiBaseUrl => _prefs?.getString(StorageKeys.apiBaseUrl);
+
   Future<void> saveTokens({
     required String accessToken,
     required String refreshToken,
   }) async {
     await _prefs?.setString(StorageKeys.accessToken, accessToken);
     await _prefs?.setString(StorageKeys.refreshToken, refreshToken);
+  }
+
+  Future<void> saveApiBaseUrl(String apiBaseUrl) async {
+    await _prefs?.setString(StorageKeys.apiBaseUrl, apiBaseUrl);
   }
 
   Future<void> saveUserId(String userId) async {

@@ -12,6 +12,7 @@ import 'package:shi_ju/pages/quote_detail/quote_detail_page.dart';
 import 'package:shi_ju/pages/recite/recite_list_page.dart';
 import 'package:shi_ju/pages/recite/recite_review_page.dart';
 import 'package:shi_ju/pages/search/search_page.dart';
+import 'package:shi_ju/pages/server_config/server_config_page.dart';
 import 'package:shi_ju/pages/splash/splash_page.dart';
 import 'package:shi_ju/providers/auth_provider.dart';
 import 'package:shi_ju/providers/collection_provider.dart';
@@ -35,6 +36,7 @@ class App extends StatelessWidget {
       routes: {
         '/splash': (_) => const SplashPage(),
         '/login': (_) => const LoginPage(),
+        '/server-config': (_) => const ServerConfigPage(),
         '/home': (_) => const HomePage(),
         '/library': (_) => const LibraryPage(),
         '/quote-detail': (_) => const QuoteDetailPage(),

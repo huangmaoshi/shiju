@@ -13,8 +13,9 @@ class ApiClient {
   final _logoutListeners = <Future<void> Function()>[];
 
   ApiClient._(this._storage) {
+    final baseUrl = _storage.apiBaseUrl ?? ApiConfig.baseUrl;
     _dio = Dio(BaseOptions(
-      baseUrl: ApiConfig.baseUrl,
+      baseUrl: baseUrl,
       connectTimeout: const Duration(milliseconds: ApiConfig.connectTimeout),
       receiveTimeout: const Duration(milliseconds: ApiConfig.receiveTimeout),
       sendTimeout: const Duration(milliseconds: ApiConfig.sendTimeout),
@@ -29,6 +30,10 @@ class ApiClient {
       _instance = ApiClient._(storage);
     }
     return _instance!;
+  }
+
+  void updateBaseUrl(String baseUrl) {
+    _dio.options.baseUrl = baseUrl;
   }
 
   void _setupInterceptors() {
@@ -61,20 +66,27 @@ class ApiClient {
             try {
               final result = await _doRefresh(refreshToken);
               if (result != null) {
+                final nextToken = result['token'] as String? ??
+                    result['accessToken'] as String?;
+                if (nextToken == null || nextToken.isEmpty) {
+                  await _handleLogout();
+                  _isRefreshing = false;
+                  return handler.reject(error);
+                }
+
                 await _storage.saveTokens(
-                  accessToken: result['accessToken'] as String,
-                  refreshToken: result['refreshToken'] as String,
+                  accessToken: nextToken,
+                  refreshToken: nextToken,
                 );
                 for (final opt in _pendingRequests) {
-                  opt.headers['Authorization'] =
-                      'Bearer ${result['accessToken']}';
+                  opt.headers['Authorization'] = 'Bearer $nextToken';
                   try {
                     await _dio.fetch(opt);
                   } catch (_) {}
                 }
                 _pendingRequests.clear();
                 error.requestOptions.headers['Authorization'] =
-                    'Bearer ${result['accessToken']}';
+                    'Bearer $nextToken';
                 final response = await _dio.fetch(error.requestOptions);
                 _isRefreshing = false;
                 return handler.resolve(response);
@@ -105,7 +117,7 @@ class ApiClient {
     try {
       final response = await _dio.post(
         '/auth/refresh',
-        data: {'refreshToken': refreshToken},
+        data: {'token': refreshToken},
       );
       if (response.data is Map<String, dynamic>) {
         final json = response.data as Map<String, dynamic>;

@@ -22,6 +22,19 @@ class AuthApi {
     );
   }
 
+  Future<ApiResponse<Map<String, dynamic>>> login({
+    required String username,
+    required String password,
+  }) async {
+    return _client.post<Map<String, dynamic>>(
+      '/auth/login',
+      data: {
+        'username': username,
+        'password': password,
+      },
+    );
+  }
+
   Future<ApiResponse<void>> logout() async {
     return _client.post<void>('/auth/logout');
   }
