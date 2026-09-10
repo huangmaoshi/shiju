@@ -8,7 +8,7 @@ ENV NODE_ENV=development
 
 # 先拷贝 package 文件，利用 Docker 层缓存
 COPY package*.json ./
-# 方案1：把 npm ci --include=dev 替换为 npm install，规避alpine下npm ci内部异常
+# 替换 npm ci --include=dev，规避alpine下npm ci内部异常
 RUN npm install
 
 # 拷贝源码与配置文件
