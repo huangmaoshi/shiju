@@ -1,0 +1,55 @@
+# 拾句后端 Docker 镜像构建工作流
+# 触发：手动 Run workflow（不在 push/commit 时自动触发）
+# 产出：ghcr.io/<owner>/shiju-server:latest + sha-xxx
+
+name: Build Docker - Server
+
+on:
+  workflow_dispatch:
+
+env:
+  REGISTRY: ghcr.io
+  IMAGE: ghcr.io/${{ github.repository_owner }}/shiju-server
+
+jobs:
+  build-and-push:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up QEMU
+        uses: docker/setup-qemu-action@v3
+
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v3
+
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Extract metadata
+        id: meta
+        uses: docker/metadata-action@v5
+        with:
+          images: ${{ env.IMAGE }}
+          tags: |
+            type=raw,value=latest
+            type=sha,format=short
+
+      - name: Build & push server image
+        uses: docker/build-push-action@v6
+        with:
+          context: ./server
+          file: ./server/Dockerfile
+          platforms: linux/amd64,linux/arm64
+          push: true
+          tags: ${{ steps.meta.outputs.tags }}
+          labels: ${{ steps.meta.outputs.labels }}
+          no-cache: true
