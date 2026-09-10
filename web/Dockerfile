@@ -6,9 +6,13 @@ FROM node:20-alpine AS builder
 
 WORKDIR /app
 
-# 先拷 package.json，利用 Docker 层缓存，并显式安装开发依赖
-COPY package.json package-lock.json* ./
-RUN npm install --include=dev
+# 明确使用开发环境，避免在 CI/Docker 环境里因为 NODE_ENV=production
+# 导致 vite / tsc 等构建依赖被跳过
+ENV NODE_ENV=development
+
+# 先拷 package files，利用 Docker 层缓存，并锁定依赖安装
+COPY package*.json ./
+RUN npm ci --include=dev
 
 # 拷源码并编译
 COPY tsconfig.json tsconfig*.json* ./
