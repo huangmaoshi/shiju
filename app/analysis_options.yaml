@@ -1,0 +1,3 @@
+# Analyzer configuration for the app.
+# Keeping this file present avoids the template-generated include warning and provides
+# a stable place for future lint configuration.
