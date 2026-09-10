@@ -6,7 +6,6 @@ import 'package:shi_ju/utils/storage_util.dart';
 class SyncProvider extends ChangeNotifier {
   late final SyncApi _syncApi;
   late final StorageUtil _storage;
-  bool _initialized = false;
 
   bool _isSyncing = false;
   String? _lastSyncMessage;
@@ -18,7 +17,6 @@ class SyncProvider extends ChangeNotifier {
     final client = await ApiClient.instance;
     instance._storage = await StorageUtil.instance;
     instance._syncApi = SyncApi(client);
-    instance._initialized = true;
     return instance;
   }
 

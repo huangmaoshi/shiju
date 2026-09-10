@@ -1,7 +1,6 @@
 import 'package:dio/dio.dart';
 import 'package:shi_ju/config/api_config.dart';
 import 'package:shi_ju/models/api_response.dart';
-import 'package:shi_ju/utils/constants.dart';
 import 'package:shi_ju/utils/storage_util.dart';
 
 class ApiClient {

@@ -1,5 +1,4 @@
 import 'package:shi_ju/models/api_response.dart';
-import 'package:shi_ju/models/user.dart';
 import 'package:shi_ju/services/api_client.dart';
 
 class AuthApi {

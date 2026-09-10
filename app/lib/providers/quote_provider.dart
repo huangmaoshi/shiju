@@ -1,12 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:shi_ju/models/api_response.dart';
 import 'package:shi_ju/models/quote.dart';
 import 'package:shi_ju/services/api_client.dart';
 import 'package:shi_ju/services/quote_api.dart';
 
 class QuoteProvider extends ChangeNotifier {
   late final QuoteApi _quoteApi;
-  bool _initialized = false;
 
   List<Quote> _quotes = [];
   Quote? _currentQuote;
@@ -23,7 +21,6 @@ class QuoteProvider extends ChangeNotifier {
     final instance = QuoteProvider._();
     final client = await ApiClient.instance;
     instance._quoteApi = QuoteApi(client);
-    instance._initialized = true;
     return instance;
   }
 

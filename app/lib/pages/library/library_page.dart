@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
 import 'package:shi_ju/providers/quote_provider.dart';
-import 'package:shi_ju/widgets/category_grid.dart';
 import 'package:shi_ju/widgets/loading_view.dart';
 import 'package:shi_ju/widgets/quote_list_item.dart';
 

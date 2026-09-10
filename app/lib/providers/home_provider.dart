@@ -11,7 +11,6 @@ class HomeProvider extends ChangeNotifier {
   late final CategoryApi _categoryApi;
   late final QuoteApi _quoteApi;
   late final DailyRecommendApi _dailyApi;
-  bool _initialized = false;
 
   List<Category> _categories = [];
   Quote? _dailyQuote;
@@ -28,7 +27,6 @@ class HomeProvider extends ChangeNotifier {
     instance._categoryApi = CategoryApi(client);
     instance._quoteApi = QuoteApi(client);
     instance._dailyApi = DailyRecommendApi(client);
-    instance._initialized = true;
     return instance;
   }
 

@@ -44,6 +44,7 @@ class _CollectionPageState extends State<CollectionPage> {
         );
       },
     );
+    if (!mounted) return;
     if (result != null && result.isNotEmpty) {
       context.read<CollectionProvider>().createCollection(name: result);
     }

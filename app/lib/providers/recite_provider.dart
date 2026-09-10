@@ -1,12 +1,10 @@
 import 'package:flutter/foundation.dart';
-import 'package:shi_ju/models/api_response.dart';
 import 'package:shi_ju/models/recite_plan.dart';
 import 'package:shi_ju/services/api_client.dart';
 import 'package:shi_ju/services/recite_api.dart';
 
 class ReciteProvider extends ChangeNotifier {
   late final ReciteApi _reciteApi;
-  bool _initialized = false;
 
   List<RecitePlan> _plans = [];
   List<RecitePlan> _todayPlans = [];
@@ -20,7 +18,6 @@ class ReciteProvider extends ChangeNotifier {
     final instance = ReciteProvider._();
     final client = await ApiClient.instance;
     instance._reciteApi = ReciteApi(client);
-    instance._initialized = true;
     return instance;
   }
 

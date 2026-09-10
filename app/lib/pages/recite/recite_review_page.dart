@@ -106,7 +106,7 @@ class _ReciteReviewPageState extends State<ReciteReviewPage> {
                                     textAlign: TextAlign.center,
                                   )
                                 : Text(
-                                    quote?.content?.replaceAll(RegExp('.'), '●') ?? '',
+                                    quote?.content.replaceAll(RegExp('.'), '●') ?? '',
                                     style: theme.textTheme.headlineMedium?.copyWith(
                                       height: 2,
                                       color: theme.colorScheme.onSurfaceVariant,

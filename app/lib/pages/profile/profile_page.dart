@@ -1,10 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shi_ju/pages/collection/collection_page.dart';
-import 'package:shi_ju/pages/library/library_page.dart';
-import 'package:shi_ju/pages/login/login_page.dart';
-import 'package:shi_ju/pages/member/member_page.dart';
-import 'package:shi_ju/pages/recite/recite_list_page.dart';
 import 'package:shi_ju/providers/auth_provider.dart';
 import 'package:shi_ju/providers/recite_provider.dart';
 

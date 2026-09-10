@@ -13,15 +13,12 @@ class CollectionDetailPage extends StatefulWidget {
 }
 
 class _CollectionDetailPageState extends State<CollectionDetailPage> {
-  String? _collectionId;
-
   @override
   void initState() {
     super.initState();
     WidgetsBinding.instance.addPostFrameCallback((_) {
       final args = ModalRoute.of(context)?.settings.arguments;
       if (args is String) {
-        _collectionId = args;
         context.read<CollectionProvider>().fetchQuotes(collectionId: args);
       }
     });
@@ -29,7 +26,6 @@ class _CollectionDetailPageState extends State<CollectionDetailPage> {
 
   @override
   Widget build(BuildContext context) {
-    final theme = Theme.of(context);
     return Scaffold(
       appBar: AppBar(title: const Text('摘抄本详情')),
       body: Consumer<CollectionProvider>(

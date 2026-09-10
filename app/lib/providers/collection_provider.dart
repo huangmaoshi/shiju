@@ -1,5 +1,4 @@
 import 'package:flutter/foundation.dart';
-import 'package:shi_ju/models/api_response.dart';
 import 'package:shi_ju/models/collection.dart';
 import 'package:shi_ju/models/quote.dart';
 import 'package:shi_ju/services/api_client.dart';
@@ -7,7 +6,6 @@ import 'package:shi_ju/services/collection_api.dart';
 
 class CollectionProvider extends ChangeNotifier {
   late final CollectionApi _collectionApi;
-  bool _initialized = false;
 
   List<Collection> _collections = [];
   List<Quote> _currentQuotes = [];
@@ -24,7 +22,6 @@ class CollectionProvider extends ChangeNotifier {
     final instance = CollectionProvider._();
     final client = await ApiClient.instance;
     instance._collectionApi = CollectionApi(client);
-    instance._initialized = true;
     return instance;
   }
 

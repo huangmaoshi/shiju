@@ -1,15 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:provider/provider.dart';
-import 'package:shi_ju/pages/library/library_page.dart';
-import 'package:shi_ju/pages/collection/collection_page.dart';
-import 'package:shi_ju/pages/profile/profile_page.dart';
 import 'package:shi_ju/pages/search/search_page.dart';
 import 'package:shi_ju/providers/home_provider.dart';
 import 'package:shi_ju/widgets/category_grid.dart';
-import 'package:shi_ju/widgets/empty_state.dart';
 import 'package:shi_ju/widgets/loading_view.dart';
 import 'package:shi_ju/widgets/quote_card.dart';
-import 'package:shi_ju/models/category.dart';
 
 class HomePage extends StatefulWidget {
   const HomePage({super.key});

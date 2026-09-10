@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:provider/provider.dart';
 import 'package:shi_ju/pages/collection/collection_page.dart';
 import 'package:shi_ju/pages/collection_detail/collection_detail_page.dart';
 import 'package:shi_ju/pages/daily/daily_page.dart';
@@ -14,12 +13,6 @@ import 'package:shi_ju/pages/recite/recite_review_page.dart';
 import 'package:shi_ju/pages/search/search_page.dart';
 import 'package:shi_ju/pages/server_config/server_config_page.dart';
 import 'package:shi_ju/pages/splash/splash_page.dart';
-import 'package:shi_ju/providers/auth_provider.dart';
-import 'package:shi_ju/providers/collection_provider.dart';
-import 'package:shi_ju/providers/home_provider.dart';
-import 'package:shi_ju/providers/quote_provider.dart';
-import 'package:shi_ju/providers/recite_provider.dart';
-import 'package:shi_ju/providers/sync_provider.dart';
 import 'package:shi_ju/theme/app_theme.dart';
 
 class MyApp extends StatelessWidget {
