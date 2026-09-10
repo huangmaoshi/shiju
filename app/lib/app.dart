@@ -22,6 +22,15 @@ import 'package:shi_ju/providers/recite_provider.dart';
 import 'package:shi_ju/providers/sync_provider.dart';
 import 'package:shi_ju/theme/app_theme.dart';
 
+class MyApp extends StatelessWidget {
+  const MyApp({super.key});
+
+  @override
+  Widget build(BuildContext context) {
+    return const App();
+  }
+}
+
 class App extends StatelessWidget {
   const App({super.key});
 
