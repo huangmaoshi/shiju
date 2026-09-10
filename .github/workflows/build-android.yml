@@ -42,6 +42,25 @@ jobs:
         # app/ 目录缺少 android/ 原生工程，首次构建需要生成
         run: flutter create . --org com.shiju --project-name shi_ju --platforms=android
 
+      - name: Allow cleartext HTTP for Android
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          manifest_path = Path('android/app/src/main/AndroidManifest.xml')
+          if not manifest_path.exists():
+              raise SystemExit('AndroidManifest.xml not found after flutter create')
+
+          text = manifest_path.read_text(encoding='utf-8')
+          if 'android:usesCleartextTraffic="true"' not in text:
+              text = text.replace(
+                  '<application',
+                  '<application android:usesCleartextTraffic="true"',
+                  1,
+              )
+              manifest_path.write_text(text, encoding='utf-8')
+          PY
+
       - name: Install dependencies
         run: flutter pub get
 
